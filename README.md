@@ -75,7 +75,7 @@ If you have ideas for new features, optimizations, or extensions, feel free to o
 ---
 
 ## References
-[Original KGLS Paper]([https://www.sciencedirect.com/science/article/abs/pii/S0305054819300024])
+[Original KGLS Paper](https://www.sciencedirect.com/science/article/abs/pii/S0305054819300024)
 
 [VRP Repository](http://vrp.galgos.inf.puc-rio.br/index.php/en/)
 
