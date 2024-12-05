@@ -10,7 +10,7 @@ to escape local optima and explore new parts of the solution space.
 
 ![KGLS example run](assets/kgls_sim1.gif)
 
-___
+---
 
 # Getting Started
 
@@ -48,7 +48,7 @@ kgls.to_file(path_to_output_file)
 For additional usage examples, such as running benchmarks on multiple instances, 
 refer to the `examples` directory.
 
-___
+---
 
 ## Implemented local search moves
 
@@ -66,20 +66,20 @@ KGLS employs four local search heuristics to iteratively improve the solution.
 4. **Lin-Kernighan Heuristic**
     A powerful and flexible edge exchange heuristic originally designed for the Travelling Salesman Problem. KGLS uses a simplified implementation to improve routes in themselves.
 
-___
+---
 
 ## Contributions
 Contributions to this repository are welcome! 
 If you have ideas for new features, optimizations, or extensions, feel free to open an issue or submit a pull request.
 
-___
+---
 
 ## References
 [Original KGLS Paper]([https://www.sciencedirect.com/science/article/abs/pii/S0305054819300024])
+
 [VRP Repository](http://vrp.galgos.inf.puc-rio.br/index.php/en/)
 
-___
+---
 
 ## License
 This project is licensed under the MIT License. See the LICENSE file for details.
-
