@@ -1,9 +1,4 @@
-from datastructure.cost_evaluator import CostEvaluator
-from datastructure.edge import Edge
-from datastructure.node import Node
-from datastructure.route import Route
-from datastructure.vrp_problem import VRPProblem
-from datastructure.vrp_solution import VRPSolution
+from kgls.datastructure import Node, Edge, Route, VRPProblem, VRPSolution, CostEvaluator
 
 
 def test_compute_edge_width_perpendicular():

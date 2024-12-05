@@ -1,6 +1,4 @@
 from collections import defaultdict
-import matplotlib.pyplot as plt
-from matplotlib.gridspec import GridSpec
 
 from .node import Node
 from .route import Route
@@ -111,9 +109,9 @@ class VRPSolution:
         new_route.size += len(nodes_to_be_inserted)
 
     def _initialize_plots(self):
-        """
-        Initialize the static elements of the plots.
-        """
+        import matplotlib.pyplot as plt
+        from matplotlib.gridspec import GridSpec
+
         # Initialize route lines
         colors = plt.cm.get_cmap("tab20c")
         for route_index in range(len(self.problem.customers)):  # max number of possible routes

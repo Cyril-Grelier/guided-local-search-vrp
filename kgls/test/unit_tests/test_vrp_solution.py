@@ -1,4 +1,4 @@
-from datastructure import Node, VRPProblem, Route, VRPSolution
+from kgls.datastructure import Node, VRPProblem, Route, VRPSolution
 
 
 def test_insert_nodes_after():

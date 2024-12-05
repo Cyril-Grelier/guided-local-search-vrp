@@ -3,10 +3,7 @@ from itertools import combinations
 import math
 from typing import List
 
-from datastructure.cost_evaluator import CostEvaluator
-from kgls.datastructure.node import Node
-from kgls.datastructure.vrp_problem import VRPProblem
-from kgls.datastructure.vrp_solution import VRPSolution
+from kgls.datastructure import Node, CostEvaluator, VRPProblem, VRPSolution
 
 logger = logging.getLogger(__name__)
 

@@ -1,5 +1,5 @@
 
-from local_search.operator_3_opt import search_3_opt_moves_from
+from kgls.local_search.operator_3_opt import search_3_opt_moves_from
 from kgls.datastructure import Node, Route, VRPProblem, CostEvaluator
 
 

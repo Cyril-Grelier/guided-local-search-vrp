@@ -1,5 +1,5 @@
 
-from local_search.operator_relocation_chain import search_relocation_chains
+from kgls.local_search.operator_relocation_chain import search_relocation_chains
 from kgls.datastructure import Node, Route, VRPProblem, CostEvaluator
 
 

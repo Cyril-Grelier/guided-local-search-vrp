@@ -2,11 +2,11 @@ import logging
 import math
 import time
 
-from datastructure import CostEvaluator, VRPProblem, VRPSolution
-from interfaces.problem_reader import read_vrp_instance
-from local_search import improve_solution, perturbate_solution
-from solution_construction import clark_wright_route_reduction
-from abortion_condition import BaseAbortionCondition, MaxRuntimeCondition, MaxIterationsCondition, RuntimeWithoutImprovementCondition, IterationsWithoutImprovementCondition
+from .datastructure import CostEvaluator, VRPProblem, VRPSolution
+from .interfaces.problem_reader import read_vrp_instance
+from .local_search import improve_solution, perturbate_solution
+from .solution_construction import clark_wright_route_reduction
+from .abortion_condition import BaseAbortionCondition, MaxRuntimeCondition, MaxIterationsCondition, RuntimeWithoutImprovementCondition, IterationsWithoutImprovementCondition
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +98,6 @@ class KGLS():
                 best_sol_time=self._best_solution_time
         ):
             self._iteration += 1
-            logger.info(iter)
 
             changed_routes = perturbate_solution(
                 solution=self._cur_solution,

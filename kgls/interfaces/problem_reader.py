@@ -1,6 +1,6 @@
 import os
 
-from datastructure import Node, VRPProblem
+from kgls.datastructure import Node, VRPProblem
 
 
 def read_vrp_instance(file_path: str) -> VRPProblem:
@@ -50,7 +50,7 @@ def read_vrp_instance(file_path: str) -> VRPProblem:
     return VRPProblem(
         nodes=list(nodes.values()),
         capacity=capacity,
-        best_solution=best_solution
+        bks=best_solution
     )
 
 
