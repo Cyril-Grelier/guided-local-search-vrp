@@ -27,6 +27,8 @@ pip install matplotlib
 KGLS accepts VRP instance files as input. Example files are available in the `examples` directory 
 or on the [VRP website](http://vrp.galgos.inf.puc-rio.br/index.php/en/).
 
+## Usage Example
+
 ```python 
 from kgls import KGLS
 
