@@ -188,8 +188,10 @@ def perturbate_solution(solution: VRPSolution, cost_evaluator: CostEvaluator) ->
     start = time.time()
     logger.debug('Starting perturbation of solution')
 
+    # add previous penalties to costs of edges and compute the badness of the edges of the current solution
     cost_evaluator.enable_penalization()
     cost_evaluator.determine_edge_badness(solution.routes)
+
     applied_changes: int = 0
     changed_routes_perturbation = set()
 

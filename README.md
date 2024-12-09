@@ -83,3 +83,13 @@ If you have ideas for new features, optimizations, or extensions, feel free to o
 
 ## License
 This project is licensed under the MIT License. See the LICENSE file for details.
+
+## Backlog
+[] Each route has their own depot starting from index n+1
+[] refactor solution class, remove prev and next of node
+[] copy solutions
+[] remove pre-processing for relocation chain
+[] pass parameters for local search moves and e.g. perturbated edges
+[] add documentation to functions
+[] refactor get_subroutes()
+[] Cython for local search operators

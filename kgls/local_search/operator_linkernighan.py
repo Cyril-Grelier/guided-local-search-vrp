@@ -40,6 +40,9 @@ class NOptMove(LocalSearchMove):
     def get_routes(self):
         return [self.route]
 
+    def is_disjunct(self):
+        pass
+
     def complete_move(self, start_node: Node):
         if start_node not in [self.end_with_node] + self.end_with_node.get_neighbours():
             completion_costs = start_node.get_distance(self.end_with_node)
@@ -53,29 +56,6 @@ class NOptMove(LocalSearchMove):
                     )
 
         return None
-
-    def has_sub_routes(self) -> bool:
-        # check whether one node is connected to all other nodes in the route
-        nodes_to_check: set[Node] = {self.end_with_node}
-        connected_nodes: set[Node] = set()
-
-        while len(nodes_to_check) > 0:
-            node: Node = nodes_to_check.pop()
-            connected_nodes.add(node)
-
-            if get_sorted_tuple(node, node.prev) not in self.removed_edges and node.prev not in connected_nodes:
-                nodes_to_check.add(node.prev)
-            if get_sorted_tuple(node, node.next) not in self.removed_edges and node.next not in connected_nodes:
-                nodes_to_check.add(node.next)
-            for edge_n1, edge_n2 in self.new_edges:
-                if edge_n1 == node and edge_n2 not in connected_nodes:
-                    nodes_to_check.add(edge_n2)
-                elif edge_n2 == node and edge_n1 not in connected_nodes:
-                    nodes_to_check.add(edge_n1)
-
-        if len(connected_nodes) == self.route.size + 1:
-            return False
-        return True
 
     # TODO costEvaluator is only for debug reasons
     def execute(self, solution: VRPSolution):
@@ -154,7 +134,7 @@ def has_sub_routes(start_node: Node, added_edges, removed_edges) -> bool:
     return True
 
 
-def search_n_opt_moves_2(
+def search_lk_moves_from(
         valid_moves,
         start_node: Node,
         end_node: Node,
@@ -207,7 +187,7 @@ def search_n_opt_moves_2(
                         extended_move_remove = removed_edges.copy()
                         extended_move_remove.add(remove_edge)
 
-                        search_n_opt_moves_2(
+                        search_lk_moves_from(
                             valid_moves=valid_moves,
                             start_node=neighbour_neighbour,
                             end_node=end_node,
@@ -218,52 +198,6 @@ def search_n_opt_moves_2(
                             added_edges=extended_move,
                             removed_edges=extended_move_remove,
                             cum_improvement=cum_improvement - candidate_distance + neighbour_neighbour_distance
-                        )
-
-
-def search_n_opt_moves(
-        valid_moves: list[NOptMove],
-        start_node: Node,
-        max_depth: int,
-        possible_new_neighbours: dict[Node, list[Node]],
-        cur_move: NOptMove = None
-):
-    if len(cur_move.removed_edges) > 1:
-        # try to complete the move by connecting to end_with_node
-        # TODO function can add edge
-        completed_move: NOptMove = cur_move.complete_move(start_node)
-        if completed_move and not completed_move.has_sub_routes():
-            # add the move as candidate move
-            valid_moves.append(completed_move)
-
-    if len(cur_move.removed_edges) >= max_depth:
-        # Stopping condition: Maximum depth reached
-        return None
-
-    # add a new edge starting from start_node to any candidate neighbour
-    # TODO if there is any
-    for candidate_neighbour in possible_new_neighbours[start_node]:
-        # is there another candidate node in the route which is a potential neighbour?
-        if cur_move.improvement - start_node.get_distance(candidate_neighbour) > 0:
-            new_edge: Edge = get_sorted_tuple(start_node, candidate_neighbour)
-
-            if new_edge not in cur_move.new_edges:
-                # try to break a neigboring edge
-                # TODO check whether the saving is large enough, e.g., larger than the smallest distance to end_node-
-                for candidate_neighbour_neighbour in candidate_neighbour.get_neighbours():
-                    remove_edge = get_sorted_tuple(candidate_neighbour, candidate_neighbour_neighbour)
-                    if remove_edge not in cur_move.removed_edges:
-                        search_n_opt_moves(
-                            valid_moves=valid_moves,
-                            start_node=candidate_neighbour_neighbour,
-                            max_depth=max_depth,
-                            possible_new_neighbours=possible_new_neighbours,
-                            cur_move=cur_move.extend(
-                                new_edge=new_edge,
-                                removed_edge=remove_edge,
-                                improvement_change=candidate_neighbour.get_distance(
-                                    candidate_neighbour_neighbour) - start_node.get_distance(candidate_neighbour)
-                            ),
                         )
 
 
@@ -307,27 +241,13 @@ def search_lk_moves(
         # for end_node in start_node.get_neighbours():
         end_node = start_node.prev
 
-        """
-        search_n_opt_moves(
-            valid_moves=valid_moves,
-            start_node=start_node,
-            max_depth=max_depth,
-            possible_new_neighbours=possible_new_neighbors,
-            cur_move=NOptMove(
-                removed_edge={get_sorted_tuple(start_node, end_node)},
-                improvement=start_node.get_distance(end_node),
-                end_with_node=end_node,
-                route=route
-            )
-        )
-        """
         completion_costs = {
             node: cost_evaluator.get_distance(end_node, node)
             for node in route.get_nodes()
             if node != end_node and node not in end_node.get_neighbours()
         }
 
-        search_n_opt_moves_2(
+        search_lk_moves_from(
             valid_moves=valid_moves,
             start_node=start_node,
             end_node=end_node,
