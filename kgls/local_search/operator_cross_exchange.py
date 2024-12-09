@@ -1,11 +1,12 @@
 import logging
 
 from kgls.datastructure import Node, Route, VRPSolution, CostEvaluator
+from .local_search_move import LocalSearchMove
 
 logger = logging.getLogger(__name__)
 
 
-class CrossExchange:
+class CrossExchange(LocalSearchMove):
 
     def __init__(
             self,
@@ -23,9 +24,6 @@ class CrossExchange:
         self.start_node = start_node
 
         self.improvement = improvement
-
-    def __lt__(self, other):
-        return self.improvement > other.improvement
 
     def get_routes(self) -> list[Route]:
         return set([self.segment1[0].route, self.segment2[0].route])

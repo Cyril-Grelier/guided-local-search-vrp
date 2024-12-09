@@ -2,11 +2,12 @@ import logging
 
 from kgls.datastructure.edge import Edge, get_sorted_tuple
 from kgls.datastructure import Node, Route, VRPSolution, CostEvaluator
+from .local_search_move import LocalSearchMove
 
 logger = logging.getLogger(__name__)
 
 
-class NOptMove:
+class NOptMove(LocalSearchMove):
 
     def __init__(self, removed_edge: Edge, improvement: float, end_with_node: Node, route: Route, new_edges=set()):
         self.new_edges: set[Edge] = new_edges
@@ -14,9 +15,6 @@ class NOptMove:
         self.improvement: float = improvement
         self.end_with_node: Node = end_with_node
         self.route: Route = route
-
-    def __lt__(self, other):
-        return self.improvement > other.improvement
 
     def extend(
             self,
@@ -38,6 +36,9 @@ class NOptMove:
             extended_move.removed_edges.add(removed_edge)
 
         return extended_move
+
+    def get_routes(self):
+        return [self.route]
 
     def complete_move(self, start_node: Node):
         if start_node not in [self.end_with_node] + self.end_with_node.get_neighbours():

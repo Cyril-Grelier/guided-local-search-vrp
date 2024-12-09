@@ -2,6 +2,7 @@ from collections import defaultdict
 import logging
 
 from kgls.datastructure import Node, Route, VRPSolution, CostEvaluator
+from .local_search_move import LocalSearchMove
 
 # TODO continue valid chains to find even better improvements
 from kgls.local_search.operator_linkernighan import Edge
@@ -30,7 +31,7 @@ class Relocation:
         return self.improvement > other.improvement
 
 
-class RelocationChain:
+class RelocationChain(LocalSearchMove):
 
     def __init__(self):
         self.relocations: list[Relocation] = []
@@ -41,9 +42,6 @@ class RelocationChain:
         self.relocated_nodes: set[Node] = set()
         self.improvement: float = 0
         self.demand_changes: defaultdict[Route, int] = defaultdict(int)
-
-    def __lt__(self, other):
-        return self.improvement > other.improvement
 
     def get_routes(self) -> set[Route]:
         involved_routes = set()

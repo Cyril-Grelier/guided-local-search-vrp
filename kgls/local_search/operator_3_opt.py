@@ -1,11 +1,12 @@
 import logging
 
 from kgls.datastructure import Node, Route, VRPSolution, CostEvaluator
+from .local_search_move import LocalSearchMove
 
 logger = logging.getLogger(__name__)
 
 
-class SegmentMove:
+class SegmentMove(LocalSearchMove):
 
     def __init__(
             self,
@@ -18,9 +19,6 @@ class SegmentMove:
         self.move_after: Node = move_after
         self.improvement: float = improvement
         self.insert_direction = insert_direction
-
-    def __lt__(self, other):
-        return self.improvement > other.improvement
 
     def get_routes(self) -> set[Route]:
         return set([self.segment[0].route, self.move_after.route])
