@@ -1,28 +1,39 @@
 from collections import defaultdict
 import logging
 
-from kgls.datastructure import Node, Route, VRPSolution, CostEvaluator
+from kgls.datastructure import Node, Route, Edge, VRPSolution, CostEvaluator
 from .local_search_move import LocalSearchMove
 
 # TODO continue valid chains to find even better improvements
-from kgls.local_search.operator_linkernighan import Edge
 
 logger = logging.getLogger(__name__)
 
 
 class Relocation:
 
-    def __init__(self, node_to_move: Node, move_to_route: Route, move_after: Node, move_before: Node,
-                 improvement: float):
+    def __init__(
+            self,
+            node_to_move: Node,
+            cur_prev: Node,
+            cur_next: Node,
+            move_from_route: Route,
+            move_to_route: Route,
+            move_after: Node,
+            move_before: Node,
+            improvement: float
+    ):
         self.node_to_move = node_to_move
+        self.move_from_route = move_from_route
         self.move_to_route = move_to_route
+        self.cur_prev = cur_prev
+        self.cur_next = cur_next
         self.move_after = move_after
         self.move_before = move_before
         self.improvement = improvement
         self.forbidden_nodes = {
             node_to_move,
-            node_to_move.prev,
-            node_to_move.next,
+            cur_prev,
+            cur_next,
             move_after,
             move_before
         }
@@ -47,7 +58,7 @@ class RelocationChain(LocalSearchMove):
         involved_routes = set()
         for relocation in self.relocations:
             involved_routes.add(relocation.move_to_route)
-            involved_routes.add(relocation.node_to_move.route)
+            involved_routes.add(relocation.move_from_route)
         return involved_routes
 
     def _add_relocation(self, relocation: Relocation):
@@ -56,10 +67,10 @@ class RelocationChain(LocalSearchMove):
         self.forbidden_nodes = self.forbidden_nodes | relocation.forbidden_nodes
         self.forbidden_insertion.add(Edge(relocation.move_after, relocation.move_before))
         # TODO not allowed to place after or before the relocated node in the old route
-        self.forbidden_insertion.add(Edge(relocation.node_to_move.prev, relocation.node_to_move))
-        self.forbidden_insertion.add(Edge(relocation.node_to_move, relocation.node_to_move.next))
+        self.forbidden_insertion.add(Edge(relocation.cur_prev, relocation.node_to_move))
+        self.forbidden_insertion.add(Edge(relocation.node_to_move, relocation.cur_next))
 
-        self.demand_changes[relocation.node_to_move.route] -= relocation.node_to_move.demand
+        self.demand_changes[relocation.move_from_route] -= relocation.node_to_move.demand
         self.demand_changes[relocation.move_to_route] += relocation.node_to_move.demand
 
         self.relocated_nodes.add(relocation.node_to_move)
@@ -96,35 +107,9 @@ class RelocationChain(LocalSearchMove):
             f'Executing relocation with {len(self.relocations)} relocations '
             f'and improvement of {int(self.improvement)}')
 
-        # TODO operator relocate in solution
         for relocation in self.relocations:
-            old_route = relocation.node_to_move.route
-
-            # link edges in legacy route
-            relocation.node_to_move.prev.next = relocation.node_to_move.next
-            relocation.node_to_move.next.prev = relocation.node_to_move.prev
-
-            # new start node?
-            if relocation.node_to_move.prev.is_depot:
-                # TODO remove route if required
-                old_route.start_node = relocation.node_to_move.next
-
-            # link edges in destination route
-            relocation.move_after.next = relocation.node_to_move
-            relocation.node_to_move.prev = relocation.move_after
-
-            relocation.move_before.prev = relocation.node_to_move
-            relocation.node_to_move.next = relocation.move_before
-
-            if relocation.move_after.is_depot:
-                relocation.move_to_route.start_node = relocation.node_to_move
-
-            old_route.size -= 1
-            old_route.volume -= relocation.node_to_move.demand
-            relocation.move_to_route.size += 1
-            relocation.move_to_route.volume += relocation.node_to_move.demand
-
-            relocation.node_to_move.route = relocation.move_to_route
+            solution.remove_nodes([relocation.node_to_move])
+            solution.insert_nodes_after([relocation.node_to_move], relocation.move_after, relocation.move_to_route)
 
 
 def insert_node(
@@ -132,40 +117,56 @@ def insert_node(
         removal_gain: float,
         insert_next_to: Node,
         cur_chain: RelocationChain,
+        solution: VRPSolution,
         cost_evaluator: CostEvaluator,
 ):
     # TODO check insertion before and after
     #insertion_cost = cost_evaluator.insertion_costs[node_to_move, insert_next_to]
     #insert_after = cost_evaluator.insertion_after[node_to_move, insert_next_to]
+    predecessor = solution.prev(insert_next_to)
+    successor = solution.next(insert_next_to)
     insertion_cost_before = (
-            cost_evaluator.get_distance(node_to_move, insert_next_to.prev)
+            cost_evaluator.get_distance(node_to_move, predecessor)
             + cost_evaluator.get_distance(node_to_move, insert_next_to)
-            - cost_evaluator.get_distance(insert_next_to.prev, insert_next_to)
+            - cost_evaluator.get_distance(predecessor, insert_next_to)
     )
     insertion_cost_after = (
-            cost_evaluator.get_distance(node_to_move, insert_next_to.next)
+            cost_evaluator.get_distance(node_to_move, successor)
             + cost_evaluator.get_distance(node_to_move, insert_next_to)
-            - cost_evaluator.get_distance(insert_next_to.next, insert_next_to)
+            - cost_evaluator.get_distance(successor, insert_next_to)
     )
     if insertion_cost_before <= insertion_cost_after:
         insertion_cost = insertion_cost_before
-        insert_after = insert_next_to.prev
+        insert_after = predecessor
+        insert_before = insert_next_to
     else:
         insertion_cost = insertion_cost_after
         insert_after = insert_next_to
+        insert_before = successor
 
     cost_change = removal_gain - insertion_cost
 
     if cur_chain.improvement + cost_change > 0:
-        if cur_chain.can_insert_between(insert_after, insert_after.next):
-            route = insert_next_to.route
+        if cur_chain.can_insert_between(insert_after, insert_before):
+            route = solution.route_of(insert_next_to)
 
-            return Relocation(node_to_move, route, insert_after, insert_after.next, cost_change)
+            return Relocation(
+                node_to_move=node_to_move,
+                cur_prev=solution.prev(node_to_move),
+                cur_next=solution.next(node_to_move),
+                move_from_route=solution.route_of(node_to_move),
+                move_to_route=route,
+                move_after=insert_after,
+                move_before=insert_before,
+                improvement=cost_change
+            )
 
     return None
 
+
 def search_relocation_chains_from(
         valid_relocations_chain: list,
+        solution: VRPSolution,
         cost_evaluator: CostEvaluator,
         node_to_move: Node,
         max_depth: int,
@@ -180,31 +181,34 @@ def search_relocation_chains_from(
     if cur_chain is None:
         cur_chain = RelocationChain()
 
-    original_prev = node_to_move.prev
-    original_next = node_to_move.next
-
     # Step 1: Calculate the cost change from removing the node
+    cur_prev = solution.prev(node_to_move)
+    cur_next = solution.next(node_to_move)
     #removal_improvement = cost_evaluator.ejection_costs[node_to_move]
     removal_improvement = (
-            cost_evaluator.get_distance(node_to_move, original_prev)
-            + cost_evaluator.get_distance(node_to_move, original_next)
-            - cost_evaluator.get_distance(original_prev, original_next)
+            cost_evaluator.get_distance(node_to_move, cur_prev)
+            + cost_evaluator.get_distance(node_to_move, cur_next)
+            - cost_evaluator.get_distance(cur_prev, cur_next)
     )
 
     # Step 2: For each candidate neighbour of 'node_to_move',
     # check whether a relocation next to it would improve the solution
+    from_route = solution.route_of(node_to_move)
     candidate_insertions = defaultdict(list)
     for neighbour in cost_evaluator.get_neighborhood(node_to_move):
-        if neighbour.route != node_to_move.route and neighbour not in cur_chain.relocated_nodes:
+        to_route = solution.route_of(neighbour)
+
+        if to_route != from_route and neighbour not in cur_chain.relocated_nodes:
             insertion = insert_node(
-                node_to_move,
-                removal_improvement,
-                neighbour,
-                cur_chain,
-                cost_evaluator
+                node_to_move=node_to_move,
+                removal_gain=removal_improvement,
+                insert_next_to=neighbour,
+                cur_chain=cur_chain,
+                solution=solution,
+                cost_evaluator=cost_evaluator
             )
             if insertion:
-                candidate_insertions[neighbour.route].append(
+                candidate_insertions[to_route].append(
                     insertion
                 )
 
@@ -223,11 +227,12 @@ def search_relocation_chains_from(
             if len(extended_chain.relocations) < max_depth:
                 # try to restore feasibility by a follow-up relocation
                 # this can be achieved by ejecting a node in the destination route
-                for candidate_node in destination_route.get_customers():
+                for candidate_node in destination_route.customers:
                     if cost_evaluator.is_feasible(new_route_volume - candidate_node.demand):
                         if candidate_node not in extended_chain.forbidden_nodes:
                             search_relocation_chains_from(
                                 valid_relocations_chain=valid_relocations_chain,
+                                solution=solution,
                                 cost_evaluator=cost_evaluator,
                                 node_to_move=candidate_node,
                                 max_depth=max_depth,
@@ -237,19 +242,18 @@ def search_relocation_chains_from(
 
 
 def search_relocation_chains(
+        solution: VRPSolution,
         cost_evaluator: CostEvaluator,
         start_nodes: list[Node],
         max_depth: int,
 ) -> list[RelocationChain]:
-    # update pre-processed insertion and removal costs
-    cost_evaluator.update_relocation_costs()
-
     found_moves = []
     for start_node in start_nodes:
         search_relocation_chains_from(
-            found_moves,
-            cost_evaluator,
-            start_node,
-            max_depth
+            valid_relocations_chain=found_moves,
+            solution=solution,
+            cost_evaluator=cost_evaluator,
+            node_to_move=start_node,
+            max_depth=max_depth
         )
     return sorted(found_moves)

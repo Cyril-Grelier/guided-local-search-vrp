@@ -5,97 +5,73 @@ from .node import Node
 
 
 class Route:
-    def __init__(self, nodes: List[Node]):
+    def __init__(self, nodes: List[Node], route_index: int):
         # Initialize the route with the depot as both the first and last node.
         assert nodes[0].is_depot, 'First node of a route has to be a depot.'
         assert nodes[-1].is_depot, 'Last node of a route has to be a depot.'
         assert nodes[0] == nodes[-1], 'Start and return depot has to be the same'
 
-        size = 0
-        volume = 0
-        self.depot = nodes[0]
+        self.route_index = route_index
+        self.depot: Node = nodes[0]
+        self._nodes: list = nodes.copy()
 
-        # link each node by setting references to prev and next node in the route
-        for index, node in enumerate(nodes):
-            if index + 1 < len(nodes):
-                node.next = nodes[index + 1]
-            if index > 0:
-                node.prev = nodes[index - 1]
-            node.route = self
-
-            if not node.is_depot:
-                size += 1
-                volume += node.demand
-
-        self.size = size  # Number of customers (not including depot)
-        self.volume = volume  # Sum of demand of all customers of the route
+        self.size = len(nodes) - 2  # Number of customers (not including depot)
+        self.volume = sum(node.demand for node in self._nodes)  # Sum of demand of all customers of the route
 
         self.validate()
 
     def __repr__(self):
-        self.print()
+        return '-'.join([str(node.node_id) for node in self._nodes])
 
-    def get_customers(self) -> list[Node]:
-        customers = []
-        cur_node = self.depot
-        while not cur_node.next.is_depot:
-            customers.append(cur_node.next)
-            cur_node = cur_node.next
+    def __hash__(self):
+        return hash(self.route_index)
 
-        return customers
+    def __eq__(self, other):
+        return self.route_index == other.route_index
 
-    def get_nodes(self) -> list[Node]:
-        all_nodes = self.get_customers()
-        all_nodes.append(self.depot)
-        return all_nodes
+    def remove_customer(self, node: Node):
+        assert node.is_depot is False, 'A depot is removed from a route'
+        assert node in self._nodes, 'Node does not exist in route'
+        self.size -= 1
+        self.volume -= node.demand
+        self._nodes.remove(node)
+
+    def add_customers_after(self, nodes_to_add: list[Node], insert_after: Node):
+        if insert_after not in self._nodes:
+            raise ValueError(f"Customer {insert_after} not found in the route.")
+
+        index = self._nodes.index(insert_after)
+        self._nodes = self._nodes[:index + 1] + nodes_to_add + self._nodes[index + 1:]
+
+        for node in nodes_to_add:
+            assert node.is_depot is False, 'A depot is inserted into a route'
+            self.size += 1
+            self.volume += node.demand
+
+    @property
+    def customers(self) -> list[Node]:
+        return self._nodes[1:-1]
+
+    @property
+    def nodes(self) -> list[Node]:
+        return self._nodes[1:]
+
+    @property
+    def edges(self) -> list[Edge]:
+        return [
+            Edge(self._nodes[idx], self._nodes[idx + 1])
+            for idx in range(len(self._nodes) - 1)
+        ]
 
     def validate(self):
-        cur_node = self.depot
-        size = 0
-        volume = 0
-        return_depot_seen = False
+        assert self._nodes[0].is_depot, 'First node has to be a depot.'
+        assert self._nodes[-1].is_depot, 'Last node has to be a depot.'
+        assert self._nodes[0] == self._nodes[-1], 'Start and return depot have to be the same'
+        assert self.size == len(self._nodes) - 2
+        assert self.volume == sum(node.demand for node in self._nodes)
 
-        while not return_depot_seen:
-            if not cur_node.is_depot:
-                size += 1
-                volume += cur_node.demand
-
-            # assert that links are correct
-            assert cur_node.next.prev == cur_node, 'Prev and next links are not consistent'
-            assert cur_node.route == self, 'Wrong route assigned'
-
-            if size > self.size:
-                raise Exception('A depot is missing in the route or the size is wrong')
-
-            cur_node = cur_node.next
-            if cur_node.is_depot:
-                return_depot_seen = True
-
-        assert size == self.size, 'Route is shorter than should be'
-        assert volume == self.volume, 'The volume has been computed incorrectly'
+        for node in self._nodes[1:-1]:
+            assert node.is_depot == False
 
     def print(self) -> str:
-        cur_node = self.depot
-        route_string = str(cur_node.node_id)
-        return_depot_seen = False
-
-        while not return_depot_seen:
-            cur_node = cur_node.next
-            route_string = route_string + '-' + str(cur_node.node_id)
-            if cur_node.is_depot:
-                return_depot_seen = True
-
-        return route_string
-
-    def get_edges(self) -> list[Edge]:
-        edges = []
-        cur_node = self.depot
-        return_depot_seen = False
-
-        while not return_depot_seen:
-            edges.append(Edge(cur_node, cur_node.next))
-            cur_node = cur_node.next
-            if cur_node.is_depot:
-                return_depot_seen = True
-
-        return edges
+        return '-'.join([str(node.node_id) for node in self._nodes])

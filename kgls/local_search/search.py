@@ -23,22 +23,34 @@ def improve_route(
 ) -> None:
     start = time.time()
 
-    found_move = True
-    while found_move:
-        found_move = False
-        valid_moves = search_lk_moves(
-            cost_evaluator=cost_evaluator,
-            route=route,
-            max_depth=4
-        )
+    if route.size > 2:
+        found_move = True
+        while found_move:
+            found_move = False
+            valid_moves = search_lk_moves(
+                solution=solution,
+                cost_evaluator=cost_evaluator,
+                route=route,
+                max_depth=4
+            )
 
-        if valid_moves:
-            best_move = valid_moves[0]
-            best_move.execute(solution)
-            solution.solution_stats['moves_lk'] += 1
-            solution.plot(cost_evaluator.get_solution_costs(solution, True))
+            if valid_moves:
+                old_costs = cost_evaluator.get_solution_costs(solution)
+                best_move = valid_moves[0]
+                best_move.execute(solution)
 
-            found_move = True
+                # validate changes in solution
+                new_costs = cost_evaluator.get_solution_costs(solution)
+                improvement = old_costs - new_costs
+                assert math.isclose(improvement, best_move.improvement), \
+                    f'Improvement of LK was {improvement} ' \
+                    f'but expected was {best_move.improvement}'
+                solution.validate()
+
+                solution.solution_stats['moves_lk'] += 1
+                solution.plot(cost_evaluator.get_solution_costs(solution, True))
+
+                found_move = True
 
     end = time.time()
     solution.solution_stats['route_improvement_time'] += end - start
@@ -80,6 +92,7 @@ def find_best_improving_moves(
     start = time.time()
 
     candidate_moves = operators[operator_name](
+        solution=solution,
         cost_evaluator=cost_evaluator,
         start_nodes=start_nodes,
         **kwargs)
@@ -118,9 +131,6 @@ def find_best_improving_moves(
         if intra_route_opt:
             for route in changed_routes:
                 improve_route(route, solution, cost_evaluator)
-
-        for route in changed_routes:
-            cost_evaluator._nodes_to_update_for_relocation_chain.extend(route.get_customers())
 
         return len(disjunct_moves), changed_routes
 
@@ -176,7 +186,7 @@ def improve_solution(
     # inter-route optimization, starting from all routes in 'start_search_from_routes'
     start_from_nodes = set()
     for route in start_search_from_routes:
-        start_from_nodes.update(route.get_customers())
+        start_from_nodes.update(route.customers)
     changes_found = True
 
     while changes_found:

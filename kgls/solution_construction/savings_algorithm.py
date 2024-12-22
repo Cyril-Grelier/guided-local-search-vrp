@@ -78,7 +78,7 @@ def clark_wright_parallel(
     else:
         savings_list = compute_savings(vrp_instance.customers, vrp_instance.depot, cost_evaluator)
 
-    not_planned = vrp_instance.customers.copy()  # Nodes not yet planned
+    not_planned: list[Node] = vrp_instance.customers.copy()  # Nodes not yet planned
     can_be_extended: list[Node] = []  # Nodes planned at the start or end of a route
     cannot_be_extended: list[Node] = []  # Nodes planned not at the start or end or a route
 
@@ -95,9 +95,8 @@ def clark_wright_parallel(
         elif node1 in not_planned and node2 in not_planned:
             if node1.demand + node2.demand <= vrp_instance.capacity:
                 # create a new route with node1 and node2
-                depot_of_route = vrp_instance.depot.copy()
                 solution.add_route(
-                    [depot_of_route, node1, node2, depot_of_route]
+                    [node1, node2]
                 )
 
                 not_planned.remove(node1)
@@ -106,12 +105,12 @@ def clark_wright_parallel(
                 can_be_extended.append(node2)
 
         elif node1 in can_be_extended and node2 in not_planned:
-            if node1.route.volume + node2.demand <= vrp_instance.capacity:
-                # add node2 before or after node1
-                if node1.prev.is_depot:
-                    solution.insert_nodes_after([node2], node1.prev)
-                else:
-                    solution.insert_nodes_after([node2], node1)
+            route1 = solution.route_of(node1)
+            if route1.volume + node2.demand <= vrp_instance.capacity:
+                if solution.prev(node1).is_depot:  # add node2 before node1
+                    solution.insert_nodes_after([node2], solution.prev(node1), route1)
+                else:  # add node2 after node1
+                    solution.insert_nodes_after([node2], node1, route1)
 
                 can_be_extended.remove(node1)
                 not_planned.remove(node2)
@@ -119,12 +118,12 @@ def clark_wright_parallel(
                 can_be_extended.append(node2)
 
         elif node2 in can_be_extended and node1 in not_planned:
-            if node2.route.volume + node1.demand <= vrp_instance.capacity:
-                # add node1 before or after node2
-                if node2.prev.is_depot:
-                    solution.insert_nodes_after([node1], node2.prev)
-                else:
-                    solution.insert_nodes_after([node1], node2)
+            route2 = solution.route_of(node2)
+            if route2.volume + node1.demand <= vrp_instance.capacity:
+                if solution.prev(node2).is_depot:  # add node1 before node2
+                    solution.insert_nodes_after([node1], solution.prev(node2), route2)
+                else:  # add node1 after node2
+                    solution.insert_nodes_after([node1], node2, route2)
 
                 can_be_extended.remove(node2)
                 not_planned.remove(node1)
@@ -134,26 +133,26 @@ def clark_wright_parallel(
         elif node1 in can_be_extended and node2 in can_be_extended:
             # if both nodes are in different routes, merge the two routes
             # by moving all customers from route2 into route 1
-            if (node1.route != node2.route) and \
-                    (node1.route.volume + node2.route.volume <= vrp_instance.capacity):
-                route2 = node2.route
-                route2_customers = route2.get_customers()
+            route1 = solution.route_of(node1)
+            route2 = solution.route_of(node2)
 
-                if node1.next.is_depot:
+            if (route1 != route2) and (route1.volume + route2.volume <= vrp_instance.capacity):
+                route2_customers = route2.customers
+                solution.remove_nodes(route2_customers)
+
+                if solution.next(node1).is_depot:
                     # insert customers from route2 at the end, node2 has to be the first node
-                    if node2.next.is_depot:
+                    if solution.next(node2).is_depot:
                         route2_customers = route2_customers[::-1]
 
-                    solution.insert_nodes_after(route2_customers, node1)
+                    solution.insert_nodes_after(route2_customers, node1, route1)
 
-                if node1.prev.is_depot:
+                if solution.prev(node1).is_depot:
                     # insert at the front, node2 has to be the last node
-                    if node2.prev.is_depot:
+                    if solution.prev(node2).is_depot:
                         route2_customers = route2_customers[::-1]
 
-                    solution.insert_nodes_after(route2_customers, node1.prev)
-
-                solution.routes.remove(route2)
+                    solution.insert_nodes_after(route2_customers, solution.prev(node1), route1)
 
                 can_be_extended.remove(node2)
                 can_be_extended.remove(node1)
@@ -163,9 +162,8 @@ def clark_wright_parallel(
     # All nodes which were not inserted into a route (e.g., because of high capacity)
     # get their 'own' route
     for node in not_planned:
-        depot_of_route = vrp_instance.depot.copy()
         solution.add_route(
-            [depot_of_route, node, depot_of_route]
+            [node]
         )
 
     solution.validate()

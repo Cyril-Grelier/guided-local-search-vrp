@@ -54,7 +54,7 @@ class IterationsWithoutImprovementCondition(BaseAbortionCondition):
             start_time: int,
             best_sol_time: int
     ) -> bool:
-        return best_iteration - iteration >= self.abortion_parameter
+        return iteration - best_iteration >= self.abortion_parameter
 
 
 class MaxRuntimeCondition(BaseAbortionCondition):

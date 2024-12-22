@@ -5,10 +5,10 @@ from kgls.datastructure import Node, VRPProblem
 
 def read_vrp_instance(file_path: str) -> VRPProblem:
     nodes = dict()
-    capacity = 0
+    capacity: int = 0
 
     with open(file_path, 'r') as file:
-        section = None
+        current_section = None
         for line in file:
             line = line.strip()
 
@@ -19,23 +19,28 @@ def read_vrp_instance(file_path: str) -> VRPProblem:
                 capacity = int(line.split(':')[1].strip())
 
             elif not line[0].isdigit():
-                section = line
+                current_section = line
                 continue
 
-            elif section == "NODE_COORD_SECTION":
+            elif current_section == "NODE_COORD_SECTION":
                 parts = line.split()
-                node_id = int(parts[0]) - 1
+                node_id = int(parts[0]) - 1  # assuming IDs start with 1
                 x = float(parts[1])
                 y = float(parts[2])
-                nodes[node_id] = Node(node_id, x, y)
+                nodes[node_id] = {
+                    'id': node_id,
+                    'x': x,
+                    'y': y
+                }
 
-            elif section == "DEMAND_SECTION":
+            elif current_section == "DEMAND_SECTION":
                 parts = line.split()
                 node_id = int(parts[0].strip()) - 1
                 demand = int(parts[1].strip())
-                nodes[node_id].set_demand(demand)
-                if demand == 0:
-                    nodes[node_id].set_depot()
+                # assume that demand section is after coord section
+                nodes[node_id].update({
+                    'demand': demand
+                })
 
             elif line == "EOF":
                 break
@@ -47,8 +52,18 @@ def read_vrp_instance(file_path: str) -> VRPProblem:
         else:
             best_solution = float('inf')
 
+    vrp_nodes = [
+        Node(
+            node_id=node['id'],
+            x_coordinate=node['x'],
+            y_coordinate=node['y'],
+            demand=node['demand'],
+            is_depot=node['demand'] == 0,
+        )
+        for node in nodes.values()
+    ]
     return VRPProblem(
-        nodes=list(nodes.values()),
+        nodes=vrp_nodes,
         capacity=capacity,
         bks=best_solution
     )

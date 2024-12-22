@@ -3,14 +3,29 @@ from collections import defaultdict
 from .node import Node
 from .route import Route
 from .vrp_problem import VRPProblem
-
+#import matplotlib.pyplot as plt
+#from matplotlib.gridspec import GridSpec
 
 class VRPSolution:
     def __init__(self, problem: VRPProblem, routes: list[Route]):
+        self._next_route_index = 0
         self.routes = routes
         self.problem = problem
         self.solution_stats: defaultdict[str, float] = defaultdict(float)
         self._plot_progress = False
+
+        self._prev: dict[int, int] = {
+            node.node_id: None
+            for node in self.problem.customers
+        }
+        self._next: dict[int, int] = {
+            node.node_id: None
+            for node in self.problem.customers
+        }
+        self._route: dict[int, int] = {
+            node.node_id: None
+            for node in self.problem.customers
+        }
 
     def start_plotting(self):
         self._plot_progress = True
@@ -30,6 +45,21 @@ class VRPSolution:
         self._initialize_plots()
         plt.show()
 
+    def prev(self, node_index: Node) -> Node:
+        return self._prev[node_index.node_id]
+
+    def next(self, node_index: Node) -> Node:
+        return self._next[node_index.node_id]
+
+    def route_of(self, node: Node) -> Route:
+        return self._route[node.node_id]
+
+    def neighbour(self, node_index: Node, direction: int) -> Node:
+        if direction == 0:
+            return self.prev(node_index)
+        else:
+            return self.next(node_index)
+
     def validate(self):
         # All routes are OK
         for route in self.routes:
@@ -38,13 +68,27 @@ class VRPSolution:
         for route in self.routes:
             assert route.volume <= self.problem.capacity, \
                 "Capacity violation"
+            for node in route.customers:
+                assert self._route[node.node_id] == route
+
+        # check that nodes are linked correctly
+        for route in self.routes:
+            if route.size > 0:
+                assert self.prev(route._nodes[1]) == route.depot
+                assert self.next(route._nodes[-2]) == route.depot
+
+        for node in self.problem.nodes:
+            if not node.is_depot and not self.prev(node).is_depot:
+                assert self.next(self.prev(node)) == node
+            if not node.is_depot and not self.next(node).is_depot:
+                assert self.prev(self.next(node)) == node
 
         # All customers have been visited exactly once
         visited_customers = []
 
         for route in self.routes:
             visited_customers.extend(
-                route.get_customers()
+                route.customers
             )
 
         assert len(visited_customers) == len(set(visited_customers)), \
@@ -60,53 +104,74 @@ class VRPSolution:
         )
 
     def print_stats(self):
-        for key, value in self.solution_stats:
+        for key, value in self.solution_stats.items():
             print(f'{key}: {value}')
 
     def remove_nodes(self, nodes_to_be_removed: list[Node]):
-        route = nodes_to_be_removed[0].route
+        route = self.route_of(nodes_to_be_removed[0])
 
         # nodes might be reversed
-        if len(nodes_to_be_removed) > 1 and nodes_to_be_removed[0].next != nodes_to_be_removed[1]:
-            prev_left_neighbor = nodes_to_be_removed[-1].prev
-            prev_right_neighbor = nodes_to_be_removed[0].next
+        if len(nodes_to_be_removed) > 1 and self.next(nodes_to_be_removed[0]) != nodes_to_be_removed[1]:
+            prev_left_neighbor = self.prev(nodes_to_be_removed[-1])
+            prev_right_neighbor = self.next(nodes_to_be_removed[0])
         else:
-            prev_left_neighbor = nodes_to_be_removed[0].prev
-            prev_right_neighbor = nodes_to_be_removed[-1].next
+            prev_left_neighbor = self.prev(nodes_to_be_removed[0])
+            prev_right_neighbor = self.next(nodes_to_be_removed[-1])
 
-        prev_left_neighbor.next = prev_right_neighbor
-        prev_right_neighbor.prev = prev_left_neighbor
-        route.size -= len(nodes_to_be_removed)
+        self._next[prev_left_neighbor.node_id] = prev_right_neighbor
+        self._prev[prev_right_neighbor.node_id] = prev_left_neighbor
 
         for node in nodes_to_be_removed:
-            route.volume -= node.demand
-            assert node.is_depot is False, 'A depot is removed from a route'
+            self._route[node.node_id] = None
+            route.remove_customer(node)
 
     def add_route(self, nodes: list[Node]):
-        self.routes.append(
-            Route(nodes)
-        )
+        new_depot = self.problem.depot
+        route_nodes = [new_depot] + nodes + [new_depot]
 
-    def insert_nodes_after(self, nodes_to_be_inserted: list[Node], move_after_node: Node):
-        new_route = move_after_node.route
+        new_route = Route(route_nodes, self._next_route_index)
+        self.routes.append(new_route)
 
+        self._next_route_index += 1
+
+        for idx, node in enumerate(route_nodes):
+            if not node.is_depot:
+                self._prev[node.node_id] = route_nodes[idx - 1]
+                self._next[node.node_id] = route_nodes[idx + 1]
+                self._route[node.node_id] = new_route
+
+    def insert_nodes_after(self, nodes_to_be_inserted: list[Node], move_after_node: Node, route: Route):
+        # re-link the nodes to be inserted, since they might have been rotated
         for index, node in enumerate(nodes_to_be_inserted):
             if index + 1 < len(nodes_to_be_inserted):
-                node.next = nodes_to_be_inserted[index + 1]
-                nodes_to_be_inserted[index + 1].prev = node
+                self._next[node.node_id] = nodes_to_be_inserted[index + 1]
+                self._prev[nodes_to_be_inserted[index + 1].node_id] = node
+            self._route[node.node_id] = route
 
-            new_route.volume += node.demand
-            node.route = new_route
-            assert node.is_depot is False, 'A depot is inserted into a route'
+        # add links between new nodes and connecting nodes in route
+        if move_after_node.is_depot:
+            old_next_node = route._nodes[1]
+        else:
+            old_next_node = self.next(move_after_node)
+        self._next[move_after_node.node_id] = nodes_to_be_inserted[0]
+        self._prev[nodes_to_be_inserted[0].node_id] = move_after_node
 
-        old_next_node = move_after_node.next
-        move_after_node.next = nodes_to_be_inserted[0]
-        nodes_to_be_inserted[0].prev = move_after_node
+        self._next[nodes_to_be_inserted[-1].node_id] = old_next_node
+        self._prev[old_next_node.node_id] = nodes_to_be_inserted[-1]
 
-        nodes_to_be_inserted[-1].next = old_next_node
-        old_next_node.prev = nodes_to_be_inserted[-1]
+        route.add_customers_after(nodes_to_be_inserted, move_after_node)
 
-        new_route.size += len(nodes_to_be_inserted)
+    def rearrage_route(self, route: Route, node_order: list[Node]):
+        assert node_order[0].is_depot
+        assert node_order[-1].is_depot
+
+        for idx, node in enumerate(node_order):
+            if not node.is_depot:
+                self._prev[node.node_id] = node_order[idx - 1]
+                self._next[node.node_id] = node_order[idx + 1]
+
+        route._nodes = node_order
+        self.validate()
 
     def _initialize_plots(self):
         import matplotlib.pyplot as plt
@@ -137,7 +202,7 @@ class VRPSolution:
         self._ax_chart.set_xticks([])  # Remove x-axis ticks
         self._ax_chart.set_yticks([])  # Remove y-axis ticks
 
-        self._chart_line, = self._ax_chart.plot([], [], label="", color='black')
+        self._chart_line, = self._ax_chart.plot([], [], label="", color='black', linewidth=1)
 
         self._fig.canvas.draw()
         self._fig.canvas.flush_events()
@@ -146,8 +211,8 @@ class VRPSolution:
         if self._plot_progress:
             # update routes
             for route_index, route in enumerate(self.routes):
-                x_coordinates = [route.depot.x_coordinate] + [node.x_coordinate for node in route.get_nodes()]
-                y_coordinates = [route.depot.y_coordinate] + [node.y_coordinate for node in route.get_nodes()]
+                x_coordinates = [route.depot.x_coordinate] + [node.x_coordinate for node in route.nodes]
+                y_coordinates = [route.depot.y_coordinate] + [node.y_coordinate for node in route.nodes]
                 self._plotted_edges[route_index].set_data(x_coordinates, y_coordinates)
 
             # update value chart
@@ -157,7 +222,9 @@ class VRPSolution:
             self._chart_line.set_data(self._time_steps, self._solution_values)
             self._ax_chart.relim()  # Recompute the axis limits
             self._ax_chart.autoscale_view()
-            self._ax_chart.set_title(f'Current Gap to BKS: {current_gap: .2f}%', fontsize=10, loc='center')
+            self._ax_chart.set_title(f'Gap to Optimum: {current_gap: .2f}%', fontsize=10, loc='center')
 
             self._fig.canvas.draw_idle()
             self._fig.canvas.flush_events()
+
+            plt.savefig(f'pics/pic_{str(len(self._solution_values)).zfill(4)}.png')

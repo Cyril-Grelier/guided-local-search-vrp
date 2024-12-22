@@ -14,6 +14,8 @@ class CrossExchange(LocalSearchMove):
             segment2: list[Node],
             segment1_insert_after: Node,
             segment2_insert_after: Node,
+            route1: Route,
+            route2: Route,
             improvement: float,
             start_node: Node
     ):
@@ -22,17 +24,18 @@ class CrossExchange(LocalSearchMove):
         self.segment1_insert_after = segment1_insert_after
         self.segment2_insert_after = segment2_insert_after
         self.start_node = start_node
+        self.route1 = route1
+        self.route2 = route2
 
         self.improvement = improvement
 
     def get_routes(self) -> list[Route]:
-        return set([self.segment1[0].route, self.segment2[0].route])
+        return set([self.route1, self.route2])
 
     def is_disjunct(self, other):
-        # TODO improve?
-        if self.segment1[0].route in [other.segment1[0].route, other.segment2[0].route]:
+        if self.route1 in other.get_routes():
             return False
-        if self.segment2[0].route in [other.segment1[0].route, other.segment2[0].route]:
+        if self.route2 in other.get_routes():
             return False
 
         return True
@@ -45,11 +48,12 @@ class CrossExchange(LocalSearchMove):
         solution.remove_nodes(self.segment1)
         solution.remove_nodes(self.segment2)
 
-        solution.insert_nodes_after(self.segment1, self.segment1_insert_after)
-        solution.insert_nodes_after(self.segment2, self.segment2_insert_after)
+        solution.insert_nodes_after(self.segment1, self.segment1_insert_after, self.route2)
+        solution.insert_nodes_after(self.segment2, self.segment2_insert_after, self.route1)
 
 
 def search_cross_exchanges_from(
+        solution: VRPSolution,
         cost_evaluator: CostEvaluator,
         start_node: Node,
         segment1_directions: list[int] = [0, 1],
@@ -57,22 +61,26 @@ def search_cross_exchanges_from(
 ) -> list[CrossExchange]:
     # try to exchange a node segment starting with start_node (and extending it into 'direction')
     # with a segment from another route, starting from a neighborhood node of 'start_node'
-    route1: Route = start_node.route
+    route1: Route = solution.route_of(start_node)
     candidate_moves: list[CrossExchange] = []
 
     for segment1_direction in segment1_directions:
         for segment2_direction in segment2_directions:
 
-            if segment1_direction == 1:
-                route1_segment_connection_start = start_node.prev
-            else:
-                route1_segment_connection_start = start_node.next
+            route1_segment_connection_start = solution.neighbour(start_node, 1 - segment1_direction)
+            #if segment1_direction == 1:
+                #route1_segment_connection_start = start_node.prev
+            #else:
+                #route1_segment_connection_start = start_node.next
 
             for route2_segment_connection_start in cost_evaluator.get_neighborhood(start_node):
-                if route2_segment_connection_start.route != start_node.route:
+                route2 = solution.route_of(route2_segment_connection_start)
+
+                if route2 != route1:
                     # compute improvement of first cross
                     # TODO can go both directions
-                    segment2_start = route2_segment_connection_start.get_neighbour(segment2_direction)
+                    #segment2_start = route2_segment_connection_start.get_neighbour(segment2_direction)
+                    segment2_start = solution.neighbour(route2_segment_connection_start, segment2_direction)
                     if segment2_start.is_depot:
                         continue
 
@@ -89,8 +97,6 @@ def search_cross_exchanges_from(
                         segment1_list = [segment1_end]
                         segment1_volume = segment1_end.demand
 
-                        route2 = route2_segment_connection_start.route
-
                         # try to extend segment 1 until the end
                         while not segment1_end.is_depot:
                             # extend segment2 until capacity of route 1 is violated
@@ -104,8 +110,10 @@ def search_cross_exchanges_from(
                                 # check feasibility of route 2
                                 if cost_evaluator.is_feasible(route2.volume - segment2_volume + segment1_volume):
                                     # check overall improvement of move
-                                    route1_segment_connection_end = segment1_end.get_neighbour(segment1_direction)
-                                    route2_segment_connection_end = segment2_end.get_neighbour(segment2_direction)
+                                    #route1_segment_connection_end = segment1_end.get_neighbour(segment1_direction)
+                                    #route2_segment_connection_end = segment2_end.get_neighbour(segment2_direction)
+                                    route1_segment_connection_end = solution.neighbour(segment1_end, segment1_direction)
+                                    route2_segment_connection_end = solution.neighbour(segment2_end, segment2_direction)
 
                                     improvement_second_cross = (
                                         cost_evaluator.get_distance(segment1_end, route1_segment_connection_end)
@@ -119,18 +127,22 @@ def search_cross_exchanges_from(
                                         # store move
                                         candidate_moves.append(
                                             CrossExchange(
-                                                segment1_list.copy(),
-                                                segment2_list.copy(),
-                                                route2_segment_connection_start if segment2_direction == 1 else route2_segment_connection_end,
-                                                route1_segment_connection_start if segment1_direction == 1 else route1_segment_connection_end,
-                                                improvement,
-                                                start_node
+                                                segment1=segment1_list.copy(),
+                                                segment2=segment2_list.copy(),
+                                                route1=route1,
+                                                route2=route2,
+                                                segment1_insert_after=route2_segment_connection_start if segment2_direction == 1 else route2_segment_connection_end,
+                                                segment2_insert_after=route1_segment_connection_start if segment1_direction == 1 else route1_segment_connection_end,
+                                                improvement=improvement,
+                                                start_node=start_node
                                             )
                                         )
 
                                 # extend segment2
                                 # segment lists are in the order as the nodes are later inserted
-                                segment2_end = segment2_end.get_neighbour(segment2_direction)
+                                # segment2_end = segment2_end.get_neighbour(segment2_direction)
+                                segment2_end = solution.neighbour(segment2_end, segment2_direction)
+
                                 if (segment2_direction == 1 and segment1_direction == 0) or (segment1_direction + segment2_direction == 0):
                                     segment2_list.insert(0, segment2_end)
                                 else:
@@ -138,7 +150,8 @@ def search_cross_exchanges_from(
                                 segment2_volume += segment2_end.demand
 
                             # extend segment1
-                            segment1_end = segment1_end.get_neighbour(segment1_direction)
+                            # segment1_end = segment1_end.get_neighbour(segment1_direction)
+                            segment1_end = solution.neighbour(segment1_end, segment1_direction)
                             if (segment1_direction == 1 and segment2_direction == 0) or (segment1_direction + segment2_direction == 0):
                                 segment1_list.insert(0, segment1_end)
                             else:
@@ -150,13 +163,14 @@ def search_cross_exchanges_from(
 
 
 def search_cross_exchanges(
+        solution: VRPSolution,
         cost_evaluator: CostEvaluator,
         start_nodes: list[Node],
 ) -> list[CrossExchange]:
     candidate_moves = []
     for start_node in start_nodes:
         candidate_moves.extend(
-            search_cross_exchanges_from(cost_evaluator, start_node)
+            search_cross_exchanges_from(solution, cost_evaluator, start_node)
         )
 
     return sorted(candidate_moves)

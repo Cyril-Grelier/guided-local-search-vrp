@@ -52,9 +52,6 @@ class CostEvaluator:
                 self._penalized_costs[node1.node_id][node2.node_id] = self._costs[node1.node_id][node2.node_id]
 
         self.neighborhood, self._in_neighborhood_of = self._compute_neighborhood(nodes)
-        self._nodes_to_update_for_relocation_chain: list[Node] = [
-            node for node in nodes if not node.is_depot
-        ]
 
         self._baseline_cost = int(sum(
             self.get_distance(node, other)
@@ -66,19 +63,9 @@ class CostEvaluator:
         self._penalization_criterium_options = cycle(["width", "length", "width_length"])
         self._penalization_criterium = next(self._penalization_criterium_options)
 
-        self.ejection_costs = dict()
-        self.insertion_costs = dict()
-        self.insertion_after = dict()
 
     # def set_avg_distance(self, baseline_cost: float):
     #    self._baseline_cost: float = baseline_cost
-
-    def update_ejection_costs(self, node):
-        self.ejection_costs[node] = (
-                self.get_distance(node, node.prev)
-                + self.get_distance(node, node.next)
-                - self.get_distance(node.prev, node.next)
-        )
 
     @staticmethod
     def _compute_euclidean_distance(node1: Node, node2: Node) -> int:
@@ -118,42 +105,6 @@ class CostEvaluator:
     def is_feasible(self, capacity: int) -> bool:
         return capacity <= self._capacity
 
-    def _update_insertion_costs(self, node: Node, insert_next_to_node: Node):
-
-        cost_insert_before = (
-            self.get_distance(node, insert_next_to_node.prev)
-            + self.get_distance(node, insert_next_to_node)
-            - self.get_distance(insert_next_to_node.prev, insert_next_to_node)
-        )
-        cost_insert_after = (
-            self.get_distance(node, insert_next_to_node.next)
-            + self.get_distance(node, insert_next_to_node)
-            - self.get_distance(insert_next_to_node, insert_next_to_node.next)
-        )
-
-        if cost_insert_before <= cost_insert_after:
-            self.insertion_costs[node, insert_next_to_node] = cost_insert_before
-            self.insertion_after[node, insert_next_to_node] = insert_next_to_node.prev
-        else:
-            self.insertion_costs[node, insert_next_to_node] = cost_insert_after
-            self.insertion_after[node, insert_next_to_node] = insert_next_to_node
-
-    def update_relocation_costs(self):
-        for node in self._nodes_to_update_for_relocation_chain:
-            self.update_ejection_costs(node)
-
-            # if node is next to a depot, the insertion costs might need to be updated
-            # if the neighbor is also next to a depot
-            # TODO
-            for potential_neighbour in self._in_neighborhood_of[node]:
-                self._update_insertion_costs(node, potential_neighbour)
-
-            # update the insertion costs of all nodes which could be inserted next to the node
-            for potential_neighbour in self._in_neighborhood_of[node]:
-                self._update_insertion_costs(potential_neighbour, node)
-
-        self._nodes_to_update_for_relocation_chain = []
-
     def determine_edge_badness(self, routes: list[Route]):
         edges_in_solution: list[Edge] = []
 
@@ -168,9 +119,9 @@ class CostEvaluator:
         for route in routes:
             center_x, center_y = (None, None)
             if self._penalization_criterium in {"width", "width_length"}:
-                center_x, center_y = self._compute_route_center(route.get_nodes())
+                center_x, center_y = self._compute_route_center(route.nodes)
 
-            for edge in route.get_edges():
+            for edge in route.edges:
                 # Compute the value for the edge
                 edge.value = compute_edge_value(edge, center_x, center_y, route)
                 edge.value /= (1 + self._edge_penalties[edge])
@@ -195,17 +146,11 @@ class CostEvaluator:
 
     def enable_penalization(self):
         self._penalization_enabled = True
-        self._nodes_to_update_for_relocation_chain = [
-            node for node in self.neighborhood if not node.is_depot
-        ]
 
     def disable_penalization(self):
         self._penalization_enabled = False
-        self._nodes_to_update_for_relocation_chain = [
-            node for node in self.neighborhood if not node.is_depot
-        ]
 
-    def get_distance(self, node1: Node, node2: Node) -> float:
+    def get_distance(self, node1: Node, node2: Node) -> int:
         if not self._penalization_enabled:
             return self._costs[node1.node_id][node2.node_id]  # node1.get_distance(node2)
         else:
@@ -232,12 +177,6 @@ class CostEvaluator:
         )
         self._edge_ranking.insert_element(worst_edge)
 
-        # TODO here correct?
-        if not worst_edge.get_first_node().is_depot:
-            self._nodes_to_update_for_relocation_chain.append(worst_edge.get_first_node())
-        if not worst_edge.get_second_node().is_depot:
-            self._nodes_to_update_for_relocation_chain.append(worst_edge.get_second_node())
-
         return worst_edge
 
     def penalize(self, edge: Edge) -> None:
@@ -248,18 +187,14 @@ class CostEvaluator:
 
         for route in solution.routes:
             if route.size > 0:
-                cur_node = route.depot
-                while not cur_node.next.is_depot:
-                    if ignore_penalties:
-                        solution_costs += self._costs[cur_node.node_id][cur_node.next.node_id]
-                    else:
-                        solution_costs += self.get_distance(cur_node, cur_node.next)
-                    cur_node = cur_node.next
+                for idx in range(len(route._nodes) - 1):
+                    edge_node1 = route._nodes[idx]
+                    edge_node2 = route._nodes[idx + 1]
 
-                if ignore_penalties:
-                    solution_costs += self._costs[cur_node.node_id][cur_node.next.node_id]
-                else:
-                    solution_costs += self.get_distance(cur_node, cur_node.next)
+                    if ignore_penalties:
+                        solution_costs += self._costs[edge_node1.node_id][edge_node2.node_id]
+                    else:
+                        solution_costs += self.get_distance(edge_node1, edge_node2)
 
         return solution_costs
 
