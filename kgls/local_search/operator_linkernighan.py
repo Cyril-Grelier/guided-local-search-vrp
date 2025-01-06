@@ -1,5 +1,6 @@
-import logging
 from collections import defaultdict, deque
+import logging
+import math
 
 from kgls.datastructure import Node, Route, VRPSolution, CostEvaluator
 from .local_search_move import LocalSearchMove
@@ -12,25 +13,23 @@ class LKEdge:
     node2: Node
 
     def __init__(self, node1: Node, node2: Node):
-        self.node1 = node1
-        self.node2 = node2
+        if node1 > node2:
+            self.node1 = node1
+            self.node2 = node2
+        else:
+            self.node1 = node2
+            self.node2 = node1
 
     def __hash__(self):
-        if self.node1 > self.node2:
-            return hash((self.node1, self.node2))
-        else:
-            return hash((self.node2, self.node1))
+        return hash((self.node1, self.node2))
 
     def __eq__(self, other):
         if other.node1 == self.node1 and other.node2 == self.node2:
-            return True
-        if other.node1 == self.node2 and other.node2 == self.node1:
             return True
         return False
 
 
 class NOptMove(LocalSearchMove):
-
     def __init__(
             self,
             removed_edges: set,
@@ -147,20 +146,20 @@ class LKMoveSearcher:
             return None
 
         # try to connect 'start_node' to any of the nearest non-connected nodes in the route
-        for candidate_neighbour, cost_added in self.possible_new_neighbours[start_node]:
+        for add_edge_to, cost_added in self.possible_new_neighbours[start_node]:
             if cum_improvement > cost_added:
-                if LKEdge(start_node, candidate_neighbour) not in added_edges:
+                if LKEdge(start_node, add_edge_to) not in added_edges:
                     # try to break an edge adjacent to 'candidate_neighbour'
-                    for neighbour_neighbour, cost_removed in self.current_neighbors[candidate_neighbour]:
+                    for remove_edge_to, cost_removed in self.current_neighbors[add_edge_to]:
                         if cum_improvement - cost_added + cost_removed > self.min_completion_costs:
-                            if LKEdge(candidate_neighbour, neighbour_neighbour) not in removed_edges:
+                            if LKEdge(add_edge_to, remove_edge_to) not in removed_edges:
                                 extended_move = added_edges.copy()
-                                extended_move.add(LKEdge(start_node, candidate_neighbour))
+                                extended_move.add(LKEdge(start_node, add_edge_to))
                                 extended_move_remove = removed_edges.copy()
-                                extended_move_remove.add(LKEdge(candidate_neighbour, neighbour_neighbour))
+                                extended_move_remove.add(LKEdge(add_edge_to, remove_edge_to))
 
                                 self.search(
-                                    start_node=neighbour_neighbour,
+                                    start_node=remove_edge_to,
                                     added_edges=extended_move,
                                     removed_edges=extended_move_remove,
                                     cum_improvement=cum_improvement - cost_added + cost_removed,
@@ -209,27 +208,21 @@ class LKMoveSearcher:
         return len(visited) != len(self.current_neighbors)
 
 
-def search_lk_moves(
-        solution: VRPSolution,
-        cost_evaluator: CostEvaluator,
+def get_candidate_neighbors(
         route: Route,
-        max_depth: int
-) -> list[NOptMove]:
-    # initialize the data structures
-    depot_node = route.depot
-    customers = route.customers
-
-    # compute which neighbor to connect to
+        cost_evaluator: CostEvaluator,
+        solution: VRPSolution
+) -> dict[Node, list[tuple[Node, int]]]:
+    # The depot can connect to any customer in the route except current neighbors
+    depot = route.depot
     possible_new_neighbors: dict[Node, list[tuple[Node, int]]] = {}
-
-    # For the depot node: it can connect to any customer in the route except current neighbors
-    possible_new_neighbors[depot_node] = [
-        (customer, cost_evaluator.get_distance(depot_node, customer))
-        for customer in customers[1:-1]
+    possible_new_neighbors[depot] = [
+        (customer, cost_evaluator.get_distance(depot, customer))
+        for customer in route.customers[1:-1]
     ]
     # For customers, any of the 6 nearest nodes in the route (which are not currently a neighbour)
     # are candidate neighbors
-    for customer in customers:
+    for customer in route.customers:
         nearest_nodes_in_route = [
             (node, cost_evaluator.get_distance(customer, node))
             for node in route.nodes
@@ -237,10 +230,19 @@ def search_lk_moves(
         ]
         nearest_nodes_in_route = sorted(nearest_nodes_in_route, key=lambda x: x[1])
         possible_new_neighbors[customer] = nearest_nodes_in_route[:6]
-        # TODO this needs to be sorted before filtering for 6!
-        # TODO also the depot is never included here!
 
+    return possible_new_neighbors
+
+
+def get_current_neighbors(
+        route: Route,
+        cost_evaluator: CostEvaluator,
+        solution: VRPSolution
+) -> dict[Node, list[tuple[Node, int]]]:
     neighbors: dict[Node, list[tuple[Node, int]]] = dict()
+    depot_node = route.depot
+    customers = route.customers
+
     for node in customers:
         neighbors[node] = [
             (solution.prev(node), cost_evaluator.get_distance(node, solution.prev(node))),
@@ -251,31 +253,75 @@ def search_lk_moves(
         (customers[0], cost_evaluator.get_distance(depot_node, customers[0]))
     ]
 
-    valid_moves: list[NOptMove] = []
+    return neighbors
 
-    for start_node in route.nodes:
-        end_node = neighbors[start_node][0][0]
 
-        completion_costs = {
-            node: cost_evaluator.get_distance(end_node, node)
-            for node in route.nodes
-            if node != end_node and node != neighbors[end_node][0][0] and node != neighbors[end_node][1][0]
-        }
+def run_lin_kernighan_heuristic(
+        solution: VRPSolution,
+        cost_evaluator: CostEvaluator,
+        route: Route,
+        max_depth: int
+) -> None:
+    move_found: bool = True
 
-        searcher = LKMoveSearcher(
-            route=route,
-            end_node=end_node,
-            max_depth=max_depth,
-            possible_new_neighbours=possible_new_neighbors,
-            current_neighbors=neighbors,
-            completion_costs_dict=completion_costs,
+    while move_found:
+        move_found = False
+        # 1. initialize data structures
+        # compute current and potential candidate neighbours for each node
+        neighbors = get_current_neighbors(route, cost_evaluator, solution)
+        possible_new_neighbors = get_candidate_neighbors(route, cost_evaluator, solution)
+
+        # 2. starting from the most costly edge, try to find a move which removes this edge
+        # if an improving move is found, restart the search from the most costly edge
+        edges = sorted(
+            route.edges,
+            key=lambda e: cost_evaluator.get_distance(e.nodes[0], e.nodes[1]),
+            reverse=True
         )
-        searcher.search(
-            start_node=start_node,
-            removed_edges={LKEdge(end_node, start_node)},
-            added_edges=set(),
-            cum_improvement=cost_evaluator.get_distance(start_node, end_node),
-        )
-        valid_moves.extend(searcher.valid_moves)
+        for edge in edges:
+            valid_moves: list[NOptMove] = []
 
-    return sorted(valid_moves)
+            for start_node_index in [0, 1]:
+                start_node = edge.nodes[start_node_index]
+                end_node = edge.nodes[1 - start_node_index]
+
+                completion_costs = {
+                    node: cost_evaluator.get_distance(end_node, node)
+                    for node in route.nodes
+                    if node != end_node and node != neighbors[end_node][0][0] and node != neighbors[end_node][1][0]
+                }
+
+                searcher = LKMoveSearcher(
+                    route=route,
+                    end_node=end_node,
+                    max_depth=max_depth,
+                    possible_new_neighbours=possible_new_neighbors,
+                    current_neighbors=neighbors,
+                    completion_costs_dict=completion_costs,
+                )
+                searcher.search(
+                    start_node=start_node,
+                    removed_edges={LKEdge(end_node, start_node)},
+                    added_edges=set(),
+                    cum_improvement=cost_evaluator.get_distance(start_node, end_node),
+                )
+                valid_moves.extend(searcher.valid_moves)
+
+            if valid_moves:
+                old_costs = cost_evaluator.get_solution_costs(solution)
+                best_move = sorted(valid_moves)[0]
+                best_move.execute(solution)
+
+                # validate changes in solution
+                new_costs = cost_evaluator.get_solution_costs(solution)
+                improvement = old_costs - new_costs
+                assert math.isclose(improvement, best_move.improvement), \
+                    f'Improvement of LK was {improvement} ' \
+                    f'but expected was {best_move.improvement}'
+                solution.validate()
+
+                solution.solution_stats['moves_lk'] += 1
+                solution.plot(cost_evaluator.get_solution_costs(solution, True))
+
+                move_found = True
+                break

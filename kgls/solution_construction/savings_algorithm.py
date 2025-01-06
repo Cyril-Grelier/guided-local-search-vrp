@@ -83,7 +83,7 @@ def clark_wright_parallel(
     cannot_be_extended: list[Node] = []  # Nodes planned not at the start or end or a route
 
     # start with empty solution
-    solution = VRPSolution(vrp_instance, [])
+    solution = VRPSolution(vrp_instance)
 
     for saving in savings_list:
         node1, node2 = saving.from_node, saving.to_node

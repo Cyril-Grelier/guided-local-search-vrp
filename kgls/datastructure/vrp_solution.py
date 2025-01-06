@@ -7,9 +7,9 @@ from .vrp_problem import VRPProblem
 #from matplotlib.gridspec import GridSpec
 
 class VRPSolution:
-    def __init__(self, problem: VRPProblem, routes: list[Route]):
+    def __init__(self, problem: VRPProblem):
         self._next_route_index = 0
-        self.routes = routes
+        self.routes = []
         self.problem = problem
         self.solution_stats: defaultdict[str, float] = defaultdict(float)
         self._plot_progress = False

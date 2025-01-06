@@ -4,7 +4,7 @@ import math
 import time
 
 from .operator_relocation_chain import search_relocation_chains
-from .operator_linkernighan import search_lk_moves
+from .operator_linkernighan import run_lin_kernighan_heuristic
 from .operator_3_opt import search_3_opt_moves
 from .operator_cross_exchange import search_cross_exchanges
 from kgls.datastructure import Node, Route, VRPSolution, CostEvaluator
@@ -24,34 +24,12 @@ def improve_route(
     start = time.time()
 
     if route.size > 2:
-        found_move = True
-        while found_move:
-            found_move = False
-            valid_moves = search_lk_moves(
-                solution=solution,
-                cost_evaluator=cost_evaluator,
-                route=route,
-                max_depth=4
-            )
-
-            if valid_moves:
-                old_costs = cost_evaluator.get_solution_costs(solution)
-                best_move = valid_moves[0]
-                best_move.execute(solution)
-
-                # validate changes in solution
-                new_costs = cost_evaluator.get_solution_costs(solution)
-                improvement = old_costs - new_costs
-                assert math.isclose(improvement, best_move.improvement), \
-                    f'Improvement of LK was {improvement} ' \
-                    f'but expected was {best_move.improvement}'
-                solution.validate()
-
-                solution.solution_stats['moves_lk'] += 1
-                solution.plot(cost_evaluator.get_solution_costs(solution, True))
-
-                found_move = True
-
+        run_lin_kernighan_heuristic(
+            solution=solution,
+            cost_evaluator=cost_evaluator,
+            route=route,
+            max_depth=4
+        )
     end = time.time()
     solution.solution_stats['route_improvement_time'] += end - start
 

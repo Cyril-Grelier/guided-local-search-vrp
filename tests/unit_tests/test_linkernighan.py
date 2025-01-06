@@ -1,18 +1,22 @@
 
-from kgls.local_search.operator_linkernighan import search_lk_moves
-from kgls.datastructure import Node, Route, VRPProblem, CostEvaluator
+from kgls.local_search.operator_linkernighan import run_lin_kernighan_heuristic
+from kgls.datastructure import Node, VRPProblem, CostEvaluator, VRPSolution
 
 
 def build_problem() -> tuple[VRPProblem, CostEvaluator]:
-    depot = Node(0, 0, 0, 0, True)
+    # all nodes in a line
+    #  X  o  o  o  o
+    depot = Node(node_id=0, x_coordinate=0, y_coordinate=0, demand=0, is_depot=True)
     customers = [
-        Node(1, 10, 0, 1),
-        Node(2, 20, 0, 1),
-        Node(3, 30, 0, 1),
-        Node(4, 40, 0, 1),
+        Node(node_id=1, x_coordinate=10, y_coordinate=0, demand=1, is_depot=False),
+        Node(node_id=2, x_coordinate=20, y_coordinate=0, demand=1, is_depot=False),
+        Node(node_id=3, x_coordinate=30, y_coordinate=0, demand=1, is_depot=False),
+        Node(node_id=4, x_coordinate=40, y_coordinate=0, demand=1, is_depot=False),
     ]
-    vrp_problem = VRPProblem([depot] + customers, 5)
-    vrp_evaluator = CostEvaluator([depot] + customers, 5)
+    all_nodes = [depot] + customers
+
+    vrp_problem = VRPProblem(all_nodes, 5)
+    vrp_evaluator = CostEvaluator(all_nodes, 5)
 
     return vrp_problem, vrp_evaluator
 
@@ -25,44 +29,44 @@ def test_search_n_opt_moves():
     # CASE 1: 2-opt
     # 0-2-1-3-4-0 with route costs 100
     # remove (0-2), (1-3) and add (0-1), (2-3)
-    route = Route([
-        problem.depot,
+    route = [
         problem.nodes[2],
         problem.nodes[1],
         problem.nodes[3],
         problem.nodes[4],
-        problem.depot
-    ])
-    found_moves: list = search_lk_moves(evaluator, route, 2)
+    ]
+    solution = VRPSolution(problem)
+    solution.add_route(route)
 
-    assert found_moves
-    best_move = found_moves[0]
-    assert best_move.improvement == 20
-    assert (problem.nodes[2], problem.depot) in best_move.removed_edges
-    assert (problem.nodes[3], problem.nodes[1]) in best_move.removed_edges
-    assert (problem.nodes[1], problem.depot) in best_move.new_edges
-    assert (problem.nodes[3], problem.nodes[2]) in best_move.new_edges
+    run_lin_kernighan_heuristic(
+        solution=solution,
+        cost_evaluator=evaluator,
+        route=solution.routes[0],
+        max_depth=2
+    )
+
+    # There are multiple optimal solutions (like e.g., 0-1-3-4-2-0), so we just check the costs
+    assert evaluator.get_solution_costs(solution) == 80
+
 
     # CASE 2: 3-opt
     # 0-3-1-2-4-0 with route costs of 120
     # remove (0-3), (2-4), (3-1) and add (3-2), (4-3), (1-0)
-    route = Route([
-        problem.depot,
+    route = [
         problem.nodes[3],
         problem.nodes[1],
         problem.nodes[2],
         problem.nodes[4],
-        problem.depot
-    ])
-    found_moves: list = search_lk_moves(evaluator, route, 3)
+    ]
+    solution = VRPSolution(problem)
+    solution.add_route(route)
 
-    assert found_moves
-    found_moves = sorted(found_moves)
-    best_move = found_moves[0]
-    assert best_move.improvement == 40
-    assert (problem.nodes[3], problem.nodes[0]) in best_move.removed_edges
-    assert (problem.nodes[4], problem.nodes[2]) in best_move.removed_edges
-    assert (problem.nodes[3], problem.nodes[1]) in best_move.removed_edges
-    assert (problem.nodes[3], problem.nodes[2]) in best_move.new_edges
-    assert (problem.nodes[4], problem.nodes[3]) in best_move.new_edges
-    assert (problem.nodes[1], problem.nodes[0]) in best_move.new_edges
+    run_lin_kernighan_heuristic(
+        solution=solution,
+        cost_evaluator=evaluator,
+        route=solution.routes[0],
+        max_depth=3
+    )
+
+    # There are multiple optimal solutions (like e.g., 0-1-3-4-2-0), so we just check the costs
+    assert evaluator.get_solution_costs(solution) == 80

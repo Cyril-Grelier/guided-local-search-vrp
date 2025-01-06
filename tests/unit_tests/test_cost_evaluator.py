@@ -4,8 +4,8 @@ from kgls.datastructure import Node, Edge, Route, VRPProblem, VRPSolution, CostE
 def test_compute_edge_width_perpendicular():
     depot = Node(0, 10, 10, 0, True)
     customers = [
-        Node(1, 0, 0, 1),
-        Node(2, 0, 20, 1)
+        Node(1, 0, 0, 1, False),
+        Node(2, 0, 20, 1, False)
     ]
     nodes = [depot] + customers
 
@@ -25,8 +25,8 @@ def test_compute_edge_width_perpendicular():
 def test_compute_edge_width_line():
     depot = Node(0, 10, 10, 0, True)
     customers = [
-        Node(1, 20, 10, 1),
-        Node(2, 30, 10, 1)
+        Node(1, 20, 10, 1, False),
+        Node(2, 30, 10, 1, False)
     ]
     nodes = [depot] + customers
 
@@ -46,23 +46,17 @@ def test_compute_edge_width_line():
 def test_determine_edge_badness():
     depot = Node(0, 0, 0, 0, True)
     customers = [
-        Node(1, 10, 0, 1),
-        Node(2, 30, 0, 1),
-        Node(3, 60, 0, 1),
+        Node(1, 10, 0, 1, False),
+        Node(2, 30, 0, 1, False),
+        Node(3, 60, 0, 1, False),
     ]
     nodes = [depot] + customers
 
     problem = VRPProblem(nodes, 3)
     evaluator = CostEvaluator(nodes, 5)
 
-    route = Route([
-        nodes[0],
-        nodes[1],
-        nodes[2],
-        nodes[3],
-        nodes[0]
-    ])
-    solution = VRPSolution(problem, [route])
+    solution = VRPSolution(problem)
+    solution.add_route(customers)
 
     # width as criterium activated
     evaluator.determine_edge_badness(solution.routes)
