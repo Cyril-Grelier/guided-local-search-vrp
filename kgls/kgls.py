@@ -1,14 +1,25 @@
 import logging
 import math
 import time
+from typing import Any
 
 from .datastructure import CostEvaluator, VRPProblem, VRPSolution
-from .interfaces.problem_reader import read_vrp_instance
+from .read_write.problem_reader import read_vrp_instance
+from .read_write.solution_reader import read_vrp_solution
 from .local_search import improve_solution, perturbate_solution
 from .solution_construction import clark_wright_route_reduction
-from .abortion_condition import BaseAbortionCondition, MaxRuntimeCondition, MaxIterationsCondition, RuntimeWithoutImprovementCondition, IterationsWithoutImprovementCondition
+from .abortion_condition import BaseAbortionCondition, MaxRuntimeCondition, MaxIterationsCondition, \
+    RuntimeWithoutImprovementCondition, IterationsWithoutImprovementCondition
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_PARAMETERS = {
+    'depth_lin_kernighan': 4,
+    'depth_relocation_chain': 3,
+    'num_perturbations': 3,
+    'neighborhood_size': 20,
+    'moves': ['segment_move', 'cross_exchange', 'relocation_chain']
+}
 
 
 class KGLS():
@@ -23,11 +34,42 @@ class KGLS():
     _best_solution_time: int
     _run_stats: list[dict[str, any]]
 
-    def __init__(self, path_to_instance_file: str):
+    def __init__(self, path_to_instance_file: str, **kwargs):
+        self.run_parameters = self._get_run_parameters(**kwargs)
         self._vrp_instance = read_vrp_instance(path_to_instance_file)
-        self._cost_evaluator = CostEvaluator(self._vrp_instance.nodes, self._vrp_instance.capacity)
+        self._cost_evaluator = CostEvaluator(self._vrp_instance.nodes, self._vrp_instance.capacity, self.run_parameters)
         self._best_solution_costs = math.inf
+        self._cur_solution = None
+        self._best_solution = None
         self._abortion_condition = IterationsWithoutImprovementCondition(100)
+
+    def _get_run_parameters(self, **kwargs) -> dict[str, Any]:
+        # Check user-provided parameters
+        for key, value in kwargs.items():
+            if key not in DEFAULT_PARAMETERS:
+                raise ValueError(f"Invalid parameter: {key}")
+
+            if key != 'moves' and not isinstance(value, int):
+                actual_type = type(value).__name__
+                raise TypeError(f"Parameter '{key}' must be of type int, got {actual_type}")
+
+            elif key == 'moves':
+                if not isinstance(value, list):
+                    actual_type = type(value).__name__
+                    raise TypeError(f"Parameter '{key}' must be of type list, got {actual_type}")
+                if any(move not in DEFAULT_PARAMETERS["moves"] for move in value):
+                    raise ValueError(f'Moves must be in {", ".join(DEFAULT_PARAMETERS["moves"])}')
+
+        # update default parameters
+        params = {**DEFAULT_PARAMETERS, **kwargs}
+        return params
+
+    @property
+    def best_solution(self):
+        return self._best_solution
+
+    def best_solution_to_file(self, path_to_file: str):
+        self._best_solution.to_file(path_to_file)
 
     def set_abortion_condition(self, condition_name: str, param: int):
         """
@@ -58,6 +100,7 @@ class KGLS():
             self._best_iteration = self._iteration
             self._best_solution_time = time.time()
             self._best_solution_costs = current_costs
+            self._best_solution = self._cur_solution.copy()
 
         self._run_stats.append({
             "time": time.time(),
@@ -66,7 +109,7 @@ class KGLS():
             "best_costs": self._best_solution_costs,
         })
 
-    def run(self, visualize_progress: bool = False):
+    def run(self, visualize_progress: bool = False, start_solution: VRPSolution = None):
         logger.info(f'Running KGLS. {self._abortion_condition.msg}')
 
         start_time = time.time()
@@ -74,20 +117,24 @@ class KGLS():
         self._iteration = 0
 
         # construct initial solution
-        self._cur_solution = clark_wright_route_reduction(
-            vrp_instance=self._vrp_instance,
-            cost_evaluator=self._cost_evaluator
-        )
+        if start_solution is None:
+            self._cur_solution = clark_wright_route_reduction(
+                vrp_instance=self._vrp_instance,
+                cost_evaluator=self._cost_evaluator
+            )
+        else:
+            self._cur_solution = start_solution
 
         if visualize_progress:
             self._cur_solution.start_plotting()
 
-        # TODO solution.copy()
-        # TODO class run_stats
+        self._update_run_stats(start_time)
+
         improve_solution(
             solution=self._cur_solution,
             cost_evaluator=self._cost_evaluator,
-            start_search_from_routes=self._cur_solution.routes
+            start_search_from_routes=self._cur_solution.routes,
+            run_parameters=self.run_parameters,
         )
         self._update_run_stats(start_time)
 
@@ -101,16 +148,38 @@ class KGLS():
 
             changed_routes = perturbate_solution(
                 solution=self._cur_solution,
-                cost_evaluator=self._cost_evaluator
+                cost_evaluator=self._cost_evaluator,
+                run_parameters=self.run_parameters,
             )
             improve_solution(
                 solution=self._cur_solution,
                 cost_evaluator=self._cost_evaluator,
-                start_search_from_routes=changed_routes
+                start_search_from_routes=changed_routes,
+                run_parameters=self.run_parameters,
             )
 
             self._update_run_stats(start_time)
 
+        logger.info(f'KLGS finished after {(time.time() - start_time): 1f} seconds and '
+                    f'{self._iteration} iterations.')
 
-    def continue_from_solution(self, path_to_instance_file: str, path_to_solution: str):
-        pass
+    def print_stats(self):
+        for key in sorted(self._cur_solution.solution_stats.keys()):
+            print(f"{key}:\t{int(self._cur_solution.solution_stats[key])}")
+
+    def _load_solution(self, path_to_file: str) -> VRPSolution:
+        if not self._cur_solution is None:
+            raise ValueError(
+                'Cannot overwrite current solution with a new one. '
+                'Please create a new KGLS instance to start from a solution.'
+            )
+
+        solution = read_vrp_solution(path_to_file, self._vrp_instance)
+        return solution
+
+    def start_from_solution(self, path_to_file: str, visualize_progress: bool = False):
+        logger.info(f'Loading starting solution')
+        starting_solution = self._load_solution(path_to_file)
+
+        logger.info(f'Continuing KGLS from specified solution')
+        self.run(visualize_progress, starting_solution)

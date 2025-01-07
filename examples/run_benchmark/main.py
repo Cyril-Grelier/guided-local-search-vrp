@@ -9,7 +9,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-# Get the absolute path of the current script's parent directory
 instance_path = os.path.join(Path(__file__).resolve().parent, 'instances')
 all_instances = sorted([f for f in os.listdir(instance_path) if f.endswith('.vrp')])[50:60]
 

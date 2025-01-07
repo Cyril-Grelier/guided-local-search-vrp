@@ -3,8 +3,9 @@ from collections import defaultdict
 from .node import Node
 from .route import Route
 from .vrp_problem import VRPProblem
-#import matplotlib.pyplot as plt
-#from matplotlib.gridspec import GridSpec
+import matplotlib.pyplot as plt
+from matplotlib.gridspec import GridSpec
+
 
 class VRPSolution:
     def __init__(self, problem: VRPProblem):
@@ -97,15 +98,18 @@ class VRPSolution:
         assert len(visited_customers) == len(self.problem.customers), \
             "Not all customers have been planned"
 
-    def __copy__(self):
-        return VRPSolution(
-            self.problem,
-            self.routes
-        )
+    def copy(self):
+        solution_copy = self.__class__(self.problem)
+        for route in self.routes:
+            solution_copy.add_route(route.customers.copy())
 
-    def print_stats(self):
-        for key, value in self.solution_stats.items():
-            print(f'{key}: {value}')
+        return solution_copy
+
+    def to_file(self, path_to_file: str):
+        with open(path_to_file, 'w') as file:
+            for route in self.routes:
+                if route.size > 0:
+                    file.write(route.print() + '\n')
 
     def remove_nodes(self, nodes_to_be_removed: list[Node]):
         route = self.route_of(nodes_to_be_removed[0])
@@ -199,8 +203,8 @@ class VRPSolution:
         self._ax_chart.spines['bottom'].set_color('grey')
         self._ax_chart.spines['left'].set_color('grey')
         self._ax_chart.grid(False)
-        self._ax_chart.set_xticks([])  # Remove x-axis ticks
-        self._ax_chart.set_yticks([])  # Remove y-axis ticks
+        self._ax_chart.set_xticks([])
+        self._ax_chart.set_yticks([])
 
         self._chart_line, = self._ax_chart.plot([], [], label="", color='black', linewidth=1)
 
@@ -227,4 +231,5 @@ class VRPSolution:
             self._fig.canvas.draw_idle()
             self._fig.canvas.flush_events()
 
-            plt.savefig(f'pics/pic_{str(len(self._solution_values)).zfill(4)}.png')
+            # only to create a .gif afterwards
+            # plt.savefig(f'pics/pic_{str(len(self._solution_values)).zfill(4)}.png')

@@ -2,6 +2,7 @@ import heapq
 from collections import defaultdict
 from itertools import cycle
 import math
+from typing import Any
 
 from .node import Node
 from .edge import Edge
@@ -30,42 +31,40 @@ class MaxHeapWithUpdate:
 
 class CostEvaluator:
 
-    def __init__(self, nodes: list[Node], capacity: int):
-        self.nodes = nodes
+    def __init__(self, nodes: list[Node], capacity: int, run_parameters: dict[str, Any]):
         self._penalization_enabled: bool = False
         self._edge_penalties: dict[Edge, int] = defaultdict(int)
         self._baseline_cost: float = 0.0
         self._edge_ranking: MaxHeapWithUpdate = None
-        self.neighborhood_size = 20
+        self.neighborhood_size = run_parameters['neighborhood_size']
         self._capacity = capacity
 
+        # compute costs as euclidean distance between each pair of nodes
         self._costs = dict()
         for node1 in nodes:
             self._costs[node1.node_id] = dict()
             for node2 in nodes:
                 self._costs[node1.node_id][node2.node_id] = self._compute_euclidean_distance(node1, node2)
 
+        # initialize penalized as euclidean costs
         self._penalized_costs = dict()
         for node1 in nodes:
             self._penalized_costs[node1.node_id] = dict()
             for node2 in nodes:
                 self._penalized_costs[node1.node_id][node2.node_id] = self._costs[node1.node_id][node2.node_id]
 
-        self.neighborhood, self._in_neighborhood_of = self._compute_neighborhood(nodes)
+        # get neighborhood for each node
+        self._neighborhood = self._compute_neighborhood(nodes)
 
         self._baseline_cost = int(sum(
             self.get_distance(node, other)
             for node in nodes
             if not node.is_depot
-            for other in self.neighborhood[node]
+            for other in self._neighborhood[node]
         ) / (self.neighborhood_size * len(nodes)))
 
         self._penalization_criterium_options = cycle(["width", "length", "width_length"])
         self._penalization_criterium = next(self._penalization_criterium_options)
-
-
-    # def set_avg_distance(self, baseline_cost: float):
-    #    self._baseline_cost: float = baseline_cost
 
     @staticmethod
     def _compute_euclidean_distance(node1: Node, node2: Node) -> int:
@@ -77,30 +76,30 @@ class CostEvaluator:
         )
 
     def get_neighborhood(self, node: Node) -> list[Node]:
-        return self.neighborhood[node]
+        return self._neighborhood[node]
 
     def _compute_neighborhood(self, nodes: list[Node]) -> list[Node]:
         neighborhood = {
-            node: self._get_nearest_neighbors(node)
+            node: self._get_nearest_neighbors(node, nodes)
             for node in nodes
             if not node.is_depot
         }
 
-        # compute the reverse datastructure
-        in_neighborhood_of = {
-            node: [other for other in neighborhood if node in neighborhood[other]]
-            for node in nodes
-            if not node.is_depot
-        }
+        return neighborhood
 
-        return neighborhood, in_neighborhood_of
+    def _get_nearest_neighbors(self, node: Node, nodes: list[Node]) -> list[Node]:
+        # Sort nodes by their Euclidean distance to the given node, ascending
+        sorted_nodes = sorted(
+            nodes,
+            key=lambda x: self._compute_euclidean_distance(x, node)
+        )
 
-    def _get_nearest_neighbors(self, node: Node) -> list[Node]:
-        sorted_distances_asc = sorted(self._costs[node.node_id].items(), key=lambda x: x[1], reverse=False)
-        nearest_neighbors = [self.nodes[n] for (n, _) in sorted_distances_asc
-                             if not self.nodes[n].is_depot and self.nodes[n] != node
-                             ][:self.neighborhood_size]
-        return nearest_neighbors
+        # Filter out the depot and the node itself
+        nearest_neighbors = [
+            n for n in sorted_nodes if not n.is_depot and n != node
+        ]
+
+        return nearest_neighbors[:self.neighborhood_size]
 
     def is_feasible(self, capacity: int) -> bool:
         return capacity <= self._capacity
