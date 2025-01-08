@@ -25,9 +25,10 @@ kgls_light = KGLS(
     neighborhood_size=10,
     moves=['segment_move', 'relocation_chain']
 )
-kgls_light.set_abortion_condition("runtime_without_improvement", 10)
+kgls_light.set_abortion_condition("runtime_without_improvement", 1)
 kgls_light.run(visualize_progress=False)
-kgls_light.print_stats()
+
+kgls_light.print_time_distribution()
 kgls_light.best_solution_to_file('interim_solution.txt')
 
 # continue from above solution with a longer search and 'more heavy' parameters
@@ -41,4 +42,5 @@ kgls_heavy = KGLS(
 )
 kgls_heavy.set_abortion_condition("runtime_without_improvement", 120)
 kgls_heavy.start_from_solution('interim_solution.txt', False)
-kgls_heavy.print_stats()
+
+kgls_light.best_solution_to_file('final_solution.txt')

@@ -180,7 +180,6 @@ def perturbate_solution(
         cost_evaluator: CostEvaluator,
         run_parameters: dict[str, Any],
 ) -> set[Route]:
-    start = time.time()
     logger.debug('Starting perturbation of solution')
 
     # add previous penalties to costs of edges and compute the badness of the edges of the current solution
@@ -201,8 +200,5 @@ def perturbate_solution(
         changed_routes_perturbation.update(changed_routes)
 
     cost_evaluator.disable_penalization()
-
-    end = time.time()
-    solution.solution_stats['time_perturbation'] += end - start
 
     return changed_routes_perturbation

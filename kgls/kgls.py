@@ -1,7 +1,7 @@
 import logging
 import math
 import time
-from typing import Any
+from typing import Any, Optional
 
 from .datastructure import CostEvaluator, VRPProblem, VRPSolution
 from .read_write.problem_reader import read_vrp_instance
@@ -22,12 +22,12 @@ DEFAULT_PARAMETERS = {
 }
 
 
-class KGLS():
+class KGLS:
     _abortion_condition: BaseAbortionCondition
     _vrp_instance: VRPProblem
     _cost_evaluator: CostEvaluator
-    _best_solution: VRPSolution
-    _cur_solution: VRPSolution
+    _best_solution: Optional[VRPSolution]
+    _cur_solution: Optional[VRPSolution]
     _iteration: int
     _best_solution_costs: int
     _best_iteration: int
@@ -43,11 +43,14 @@ class KGLS():
         self._best_solution = None
         self._abortion_condition = IterationsWithoutImprovementCondition(100)
 
-    def _get_run_parameters(self, **kwargs) -> dict[str, Any]:
+    @staticmethod
+    def _get_run_parameters(**kwargs) -> dict[str, Any]:
         # Check user-provided parameters
         for key, value in kwargs.items():
             if key not in DEFAULT_PARAMETERS:
-                raise ValueError(f"Invalid parameter: {key}")
+                raise ValueError(
+                    f'Invalid parameter: {key}. '
+                    f'Parameter must be in {", ".join(DEFAULT_PARAMETERS.keys())}')
 
             if key != 'moves' and not isinstance(value, int):
                 actual_type = type(value).__name__
@@ -64,19 +67,11 @@ class KGLS():
         params = {**DEFAULT_PARAMETERS, **kwargs}
         return params
 
-    @property
-    def best_solution(self):
-        return self._best_solution
-
     def best_solution_to_file(self, path_to_file: str):
         self._best_solution.to_file(path_to_file)
 
     def set_abortion_condition(self, condition_name: str, param: int):
-        """
-        Set the abortion condition for KGLS.
-        :param condition_name: Name of the condition ('iterations_with_improvement', 'max_iterations', 'max_runtime').
-        :param params: Parameter for the condition.
-        """
+        # Set the abortion condition for KGLS.
         condition_classes = {
             "max_iterations": MaxIterationsCondition,
             "max_runtime": MaxRuntimeCondition,
@@ -92,10 +87,16 @@ class KGLS():
     def _update_run_stats(self, start_time):
         current_costs = self._cost_evaluator.get_solution_costs(self._cur_solution)
 
+        if self._vrp_instance.bks != float('inf'):
+            solution_quality = 100 * (current_costs - self._vrp_instance.bks) / self._vrp_instance.bks
+        else:
+            solution_quality = current_costs
+
+        # update stats if new best solution was found
         if current_costs < self._best_solution_costs:
             logger.info(
-                f'{(time.time() - start_time): 1f} ' \
-                f'{100 * (current_costs - self._vrp_instance.bks) / self._vrp_instance.bks: .2f}'
+                f'{(time.time() - start_time): 1f} '
+                f'{solution_quality: .2f}'
             )
             self._best_iteration = self._iteration
             self._best_solution_time = time.time()
@@ -103,10 +104,11 @@ class KGLS():
             self._best_solution = self._cur_solution.copy()
 
         self._run_stats.append({
-            "time": time.time(),
+            "run_time": time.time() - start_time,
             "iteration": self._iteration,
             "costs": current_costs,
             "best_costs": self._best_solution_costs,
+            "best_gap": None if self._vrp_instance.bks == float('inf') else solution_quality,
         })
 
     def run(self, visualize_progress: bool = False, start_solution: VRPSolution = None):
@@ -163,12 +165,47 @@ class KGLS():
         logger.info(f'KLGS finished after {(time.time() - start_time): 1f} seconds and '
                     f'{self._iteration} iterations.')
 
-    def print_stats(self):
-        for key in sorted(self._cur_solution.solution_stats.keys()):
-            print(f"{key}:\t{int(self._cur_solution.solution_stats[key])}")
+    def print_time_distribution(self):
+        time_entries = {
+            k.replace("time_", ""): v
+            for k, v in self._cur_solution.solution_stats.items()
+            if k.startswith("time_")
+        }
+
+        # Print table header
+        print(f"{'Move':<20}{'Time Percentage':<15}")
+        print("-" * 35)
+
+        # Print rows
+        running_percentage = 0
+        for key, run_time in time_entries.items():
+            percentage = (run_time / self.total_runtime) * 100
+            running_percentage += percentage
+            print(f"{key:<20}{int(percentage):<15}")
+
+        print(f"{'Other':<20}{int(100 - running_percentage):<15}%")
+
+    @property
+    def best_solution(self):
+        return self._best_solution
+
+    @property
+    def best_found_solution_value(self) -> int:
+        return self._best_solution_costs
+
+    @property
+    def best_found_gap(self) -> Optional[float]:
+        if self._vrp_instance.bks != float('inf'):
+            return 100 * (self._best_solution_costs - self._vrp_instance.bks) / self._vrp_instance.bks
+        else:
+            return None
+
+    @property
+    def total_runtime(self):
+        return self._run_stats[-1]["run_time"]
 
     def _load_solution(self, path_to_file: str) -> VRPSolution:
-        if not self._cur_solution is None:
+        if self._cur_solution is not None:
             raise ValueError(
                 'Cannot overwrite current solution with a new one. '
                 'Please create a new KGLS instance to start from a solution.'
@@ -178,8 +215,9 @@ class KGLS():
         return solution
 
     def start_from_solution(self, path_to_file: str, visualize_progress: bool = False):
+        logger.info(f'Continuing KGLS from specified solution')
+
         logger.info(f'Loading starting solution')
         starting_solution = self._load_solution(path_to_file)
 
-        logger.info(f'Continuing KGLS from specified solution')
-        self.run(visualize_progress, starting_solution)
+        self.run(visualize_progress=visualize_progress, start_solution=starting_solution)

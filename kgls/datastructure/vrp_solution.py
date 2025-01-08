@@ -220,7 +220,11 @@ class VRPSolution:
                 self._plotted_edges[route_index].set_data(x_coordinates, y_coordinates)
 
             # update value chart
-            current_gap = 100 * (solution_value - self.problem.bks) / self.problem.bks
+            if self.problem.bks != float('inf'):
+                current_gap = 100 * (solution_value - self.problem.bks) / self.problem.bks
+            else:
+                current_gap = solution_value
+
             self._time_steps.append(len(self._time_steps) + 1)
             self._solution_values.append(current_gap)
             self._chart_line.set_data(self._time_steps, self._solution_values)
