@@ -3,8 +3,8 @@ from collections import defaultdict
 from .node import Node
 from .route import Route
 from .vrp_problem import VRPProblem
-import matplotlib.pyplot as plt
-from matplotlib.gridspec import GridSpec
+#import matplotlib.pyplot as plt
+#from matplotlib.gridspec import GridSpec
 
 
 class VRPSolution:
