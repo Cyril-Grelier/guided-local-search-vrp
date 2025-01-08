@@ -105,32 +105,3 @@ If you have ideas for new features, optimizations, or extensions, feel free to o
 
 ## License
 This project is licensed under the MIT License. See the LICENSE file for details.
-
-## Backlog
-[] Each route has their own depot starting from index n+1
-[] refactor solution class, remove prev and next of node
-[] copy solutions
-[] remove pre-processing for relocation chain
-[] pass parameters for local search moves and e.g. perturbated edges
-[] add documentation to functions
-[] refactor get_subroutes()
-[] Cython for local search operators
-
-INFO:__main__:Solving X-n115-k10.vrp
-INFO:kgls.kgls:Running KGLS. Stops after 100 iterations without improvement.
-INFO:kgls.solution_construction.savings_algorithm:Constructing VRP solution with Clarke-Wright heuristic
-INFO:kgls.kgls: 2.285267  2.91
-INFO:kgls.kgls: 3.703111  2.82
-INFO:kgls.kgls: 3.857662  2.78
-INFO:kgls.kgls: 4.698149  2.09
-INFO:kgls.kgls: 5.166713  1.79
-INFO:kgls.kgls: 5.535004  1.44
-INFO:kgls.kgls: 5.696126  1.40
-INFO:kgls.kgls: 7.165427  1.37
-INFO:kgls.kgls: 8.596035  1.08
-INFO:kgls.kgls: 8.700594  0.75
-INFO:kgls.kgls: 9.134990  0.50
-INFO:kgls.kgls: 9.757165  0.21
-INFO:kgls.kgls: 9.885252  0.12
-INFO:kgls.kgls: 9.926275  0.09
-INFO:kgls.kgls: 10.138111  0.07
