@@ -9,7 +9,7 @@ def test_compute_edge_width_perpendicular():
     ]
     nodes = [depot] + customers
 
-    evaluator = CostEvaluator(nodes, 4)
+    evaluator = CostEvaluator(nodes, 4, {'neighborhood_size': 5})
     center_x, center_y = evaluator._compute_route_center(nodes)
 
     width = evaluator._compute_edge_width(
@@ -30,7 +30,7 @@ def test_compute_edge_width_line():
     ]
     nodes = [depot] + customers
 
-    evaluator = CostEvaluator(nodes, 4)
+    evaluator = CostEvaluator(nodes, 4, {'neighborhood_size': 5})
     center_x, center_y = evaluator._compute_route_center(nodes)
 
     width = evaluator._compute_edge_width(
@@ -53,7 +53,7 @@ def test_determine_edge_badness():
     nodes = [depot] + customers
 
     problem = VRPProblem(nodes, 3)
-    evaluator = CostEvaluator(nodes, 5)
+    evaluator = CostEvaluator(nodes, 5, {'neighborhood_size': 5})
 
     solution = VRPSolution(problem)
     solution.add_route(customers)

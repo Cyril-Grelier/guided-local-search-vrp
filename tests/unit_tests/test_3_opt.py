@@ -5,9 +5,9 @@ from kgls.datastructure import Node, VRPProblem, CostEvaluator, VRPSolution
 
 def build_problem() -> tuple[VRPProblem, CostEvaluator]:
     # Depot in the middle
-    # o   o   o
-    #     X
-    # o   o
+    # 1   2   3
+    #     D
+    #     4   5
     depot = Node(node_id=0, x_coordinate=50, y_coordinate=20, demand=0, is_depot=True)
     customers = [
         Node(node_id=1, x_coordinate=0, y_coordinate=10, demand=1, is_depot=False),
@@ -19,7 +19,7 @@ def build_problem() -> tuple[VRPProblem, CostEvaluator]:
     all_nodes = [depot] + customers
 
     vrp_problem = VRPProblem(all_nodes, 3)
-    vrp_evaluator = CostEvaluator(all_nodes, 3)
+    vrp_evaluator = CostEvaluator(all_nodes, 3, {'neighborhood_size': 5})
 
     return vrp_problem, vrp_evaluator
 

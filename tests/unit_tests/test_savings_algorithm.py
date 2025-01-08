@@ -11,7 +11,7 @@ def test_compute_savings():
     ]
     nodes = [depot] + customers
 
-    evaluator = CostEvaluator(nodes, 3)
+    evaluator = CostEvaluator(nodes, 3, {'neighborhood_size': 5})
 
     savings = compute_savings(customers, depot, evaluator)
 
@@ -29,7 +29,7 @@ def test_clark_wright_parallel():
     ]
     nodes = [depot] + customers
     problem = VRPProblem(nodes, 5)
-    evaluator = CostEvaluator(nodes, 5)
+    evaluator = CostEvaluator(nodes, 5, {'neighborhood_size': 5})
 
     solution = clark_wright_parallel(problem, evaluator)
 
@@ -49,7 +49,7 @@ def test_compute_weighted_savings():
         Node(3, 0, 10, 3, False)
     ]
     nodes = [depot] + customers
-    evaluator = CostEvaluator(nodes, 5)
+    evaluator = CostEvaluator(nodes, 5, {'neighborhood_size': 5})
 
     savings = compute_weighted_savings(customers, depot, evaluator)
 

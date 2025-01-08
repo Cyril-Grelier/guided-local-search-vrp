@@ -64,10 +64,11 @@ For additional usage examples refer to the `examples` directory, e.g.,
 ### Is Python not too slow to implement a State-of-the-Art heuristic?
 
 While Python is generally slower than compiled languages like C++ or Java, 
-it offers some advantages in terms of ease of use. 
+it offers some advantages in terms of ease of use, especially for aspiring data scientists. 
 And with a few tips, its performance can be brought to an acceptable level:
-- **Leverage Default Parameters:** Stick to the suggested default parameters, as they have been tested
-- **Use PyPy as the Interpreter:** [PyPy](https://pypy.org/), a just-in-time (JIT) compiling Python interpreter, can deliver runtime performance improvements of 2x or more compared to CPython.
+- **Stay close to default parameters:** The suggested default parameters, as they have been optimized for performance
+- **Turn visualization off:** Visualization increases runtime by some factor. 
+- **Use PyPy as interpreter:** [PyPy](https://pypy.org/), a just-in-time (JIT) compiling Python interpreter, can deliver runtime performance improvements of 2x or more compared to CPython.
 - **TODO** Pre-compile local search operators with Cython
 
 ---

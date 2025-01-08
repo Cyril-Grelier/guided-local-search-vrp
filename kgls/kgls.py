@@ -162,7 +162,7 @@ class KGLS:
 
             self._update_run_stats(start_time)
 
-        logger.info(f'KLGS finished after {(time.time() - start_time): 1f} seconds and '
+        logger.info(f'KGLS finished after {(time.time() - start_time): 1f} seconds and '
                     f'{self._iteration} iterations.')
 
     def print_time_distribution(self):
