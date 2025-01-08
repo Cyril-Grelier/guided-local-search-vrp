@@ -17,7 +17,7 @@ to escape local optima and explore new parts of the solution space.
 ## Prerequisites
 
 This implementation requires Python 3.7+ and has minimal dependencies. 
-Install matplotlib if you want to visualize solution progress:
+Install matplotlib if you want to visualize solution progress, otherwise no other dependency is required:
 
 ```bash
 pip install matplotlib
@@ -48,7 +48,7 @@ kgls.run(visualize_progress=True)
 kgls.best_solution_to_file(path_to_output_file)
 ```
 
-The following parameters can be adapted, as in [this example](examples/complex_run/main.py).
+The following parameters can be adapted, as in [this example](examples/custom_run/main.py).
 
 | Parameter          | Description                                                                                                                         | Default Value                                          |
 |--------------------|-------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------|
@@ -58,8 +58,17 @@ The following parameters can be adapted, as in [this example](examples/complex_r
 | `depth_lin_kernighan`     | The maximum number of edge exchanges in the lin-kernighan heuristic.                                                                | 4                                                      |
 | `depth_relocation_chain`  | The maximum number of relocation moves which can be executed in a relocation chain.                                                 | 3                                                      |
 
-For additional usage examples, such as running benchmarks on multiple instances, 
-refer to the `examples` directory.
+For additional usage examples refer to the `examples` directory, e.g., 
+[running benchmark sets](examples/run_benchmark/main.py). 
+
+### Is Python not too slow to implement a State-of-the-Art heuristic?
+
+While Python is generally slower than compiled languages like C++ or Java, 
+it offers some advantages in terms of ease of use. 
+And with a few tips, its performance can be brought to an acceptable level:
+- **Leverage Default Parameters:** Stick to the suggested default parameters, as they have been tested
+- **Use PyPy as the Interpreter:** [PyPy](https://pypy.org/), a just-in-time (JIT) compiling Python interpreter, can deliver runtime performance improvements of 2x or more compared to CPython.
+- **TODO** Pre-compile local search operators with Cython
 
 ---
 

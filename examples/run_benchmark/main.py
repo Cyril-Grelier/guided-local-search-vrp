@@ -19,10 +19,13 @@ for file in all_instances:
     logger.info(f'Solving {file}')
     file_path = os.path.join(instance_path, file)
 
+    # Let us use default parameters
     kgls = KGLS(file_path)
     kgls.set_abortion_condition("runtime_without_improvement", 120)
     kgls.run(visualize_progress=False)
 
+    # collects run stats
+    kgls.print_time_distribution()
     gaps[file] = kgls.best_found_gap
     run_times[file] = kgls.total_runtime
 
@@ -34,13 +37,3 @@ logger.info(f"{'Instance':<20}{'Time':<5}{'Gap':<5}")
 logger.info("-" * 30)
 for instance in gaps.keys():
     logger.info(f"{instance:<20}{int(run_times[instance]):<5}{gaps[instance]:.2f}")
-
-
-"""
-import cProfile
-import pstats
-cProfile.run('kgls.run(visualize_progress=False)')#, 'output.prof')
-with open("output.prof") as f:
-  p = pstats.Stats(f)
-p.sort_stats("cumulative").print_stats(10)
-"""
