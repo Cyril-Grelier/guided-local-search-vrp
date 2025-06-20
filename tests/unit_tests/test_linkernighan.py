@@ -1,4 +1,3 @@
-
 from kgls.local_search.operator_linkernighan import run_lin_kernighan_heuristic
 from kgls.datastructure import Node, VRPProblem, CostEvaluator, VRPSolution
 
@@ -16,7 +15,7 @@ def build_problem() -> tuple[VRPProblem, CostEvaluator]:
     all_nodes = [depot] + customers
 
     vrp_problem = VRPProblem(all_nodes, 5)
-    vrp_evaluator = CostEvaluator(all_nodes, 5, {'neighborhood_size': 5})
+    vrp_evaluator = CostEvaluator(all_nodes, 5, {"neighborhood_size": 5})
 
     return vrp_problem, vrp_evaluator
 
@@ -42,12 +41,11 @@ def test_search_n_opt_moves():
         solution=solution,
         cost_evaluator=evaluator,
         route=solution.routes[0],
-        max_depth=2
+        max_depth=2,
     )
 
     # There are multiple optimal solutions (like e.g., 0-1-3-4-2-0), so we just check the costs
     assert evaluator.get_solution_costs(solution) == 80
-
 
     # CASE 2: 3-opt
     # 0-3-1-2-4-0 with route costs of 120
@@ -65,7 +63,7 @@ def test_search_n_opt_moves():
         solution=solution,
         cost_evaluator=evaluator,
         route=solution.routes[0],
-        max_depth=3
+        max_depth=3,
     )
 
     # There are multiple optimal solutions (like e.g., 0-1-3-4-2-0), so we just check the costs

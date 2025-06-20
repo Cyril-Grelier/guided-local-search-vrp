@@ -1,4 +1,3 @@
-
 from kgls.local_search.operator_cross_exchange import search_cross_exchanges_from
 from kgls.datastructure import Node, VRPProblem, CostEvaluator, VRPSolution
 
@@ -19,7 +18,7 @@ def build_problem() -> tuple[VRPProblem, CostEvaluator]:
     all_nodes = [depot] + customers
 
     vrp_problem = VRPProblem(all_nodes, 3)
-    vrp_evaluator = CostEvaluator(all_nodes, 3, {'neighborhood_size': 5})
+    vrp_evaluator = CostEvaluator(all_nodes, 3, {"neighborhood_size": 5})
 
     return vrp_problem, vrp_evaluator
 
@@ -44,9 +43,7 @@ def test_search_cross_exchanges_from():
     solution.add_route(route2)
 
     found_moves: list = search_cross_exchanges_from(
-        solution=solution,
-        cost_evaluator=evaluator,
-        start_node=problem.nodes[4]
+        solution=solution, cost_evaluator=evaluator, start_node=problem.nodes[4]
     )
 
     assert found_moves
@@ -70,9 +67,7 @@ def test_search_cross_exchanges_from():
     solution.add_route(route2)
 
     found_moves: list = search_cross_exchanges_from(
-        solution=solution,
-        cost_evaluator=evaluator,
-        start_node=problem.nodes[2]
+        solution=solution, cost_evaluator=evaluator, start_node=problem.nodes[2]
     )
 
     assert found_moves
@@ -97,9 +92,7 @@ def test_search_cross_exchanges_from():
     solution.add_route(route2)
 
     found_moves: list = search_cross_exchanges_from(
-        solution=solution,
-        cost_evaluator=evaluator,
-        start_node=problem.nodes[3]
+        solution=solution, cost_evaluator=evaluator, start_node=problem.nodes[3]
     )
 
     assert found_moves

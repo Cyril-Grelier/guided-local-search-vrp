@@ -1,4 +1,4 @@
-from kgls.datastructure import Node, VRPProblem, Route, VRPSolution
+from kgls.datastructure import Node, VRPProblem, VRPSolution
 
 
 def test_insert_nodes_after():
@@ -18,7 +18,7 @@ def test_insert_nodes_after():
     solution.insert_nodes_after(
         nodes_to_be_inserted=customers[2:],
         move_after_node=customers[0],
-        route=solution.routes[0]
+        route=solution.routes[0],
     )
 
     solution.routes[0].validate()

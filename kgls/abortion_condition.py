@@ -10,11 +10,7 @@ class BaseAbortionCondition:
         self.msg = "not implemented"
 
     def should_abort(
-            self,
-            iteration: int,
-            best_iteration: int,
-            start_time: int,
-            best_sol_time: int
+        self, iteration: int, best_iteration: int, start_time: int, best_sol_time: int
     ) -> bool:
         """
         Evaluate whether the abortion condition is met.
@@ -33,11 +29,7 @@ class MaxIterationsCondition(BaseAbortionCondition):
         self.msg = f"Stops after {abortion_parameter} iterations."
 
     def should_abort(
-            self,
-            iteration: int,
-            best_iteration: int,
-            start_time: int,
-            best_sol_time: int
+        self, iteration: int, best_iteration: int, start_time: int, best_sol_time: int
     ) -> bool:
         return iteration >= self.abortion_parameter
 
@@ -48,11 +40,7 @@ class IterationsWithoutImprovementCondition(BaseAbortionCondition):
         self.msg = f"Stops after {abortion_parameter} iterations without improvement."
 
     def should_abort(
-            self,
-            iteration: int,
-            best_iteration: int,
-            start_time: int,
-            best_sol_time: int
+        self, iteration: int, best_iteration: int, start_time: int, best_sol_time: int
     ) -> bool:
         return iteration - best_iteration >= self.abortion_parameter
 
@@ -63,11 +51,7 @@ class MaxRuntimeCondition(BaseAbortionCondition):
         self.msg = f"Stops after {abortion_parameter} seconds."
 
     def should_abort(
-            self,
-            iteration: int,
-            best_iteration: int,
-            start_time: int,
-            best_sol_time: int
+        self, iteration: int, best_iteration: int, start_time: int, best_sol_time: int
     ) -> bool:
         elapsed_time = time.time() - start_time
         return elapsed_time >= self.abortion_parameter
@@ -79,11 +63,7 @@ class RuntimeWithoutImprovementCondition(BaseAbortionCondition):
         self.msg = f"Stops after {abortion_parameter} seconds without improvement."
 
     def should_abort(
-            self,
-            iteration: int,
-            best_iteration: int,
-            start_time: int,
-            best_sol_time: int
+        self, iteration: int, best_iteration: int, start_time: int, best_sol_time: int
     ) -> bool:
         elapsed_time = time.time() - best_sol_time
         return elapsed_time >= self.abortion_parameter

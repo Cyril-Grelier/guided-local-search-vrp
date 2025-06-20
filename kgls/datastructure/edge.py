@@ -16,7 +16,10 @@ class Edge:
     def __eq__(self, other):
         if not isinstance(other, Edge):
             return NotImplemented
-        return self.get_first_node() == other.get_first_node() and self.get_second_node() == other.get_second_node()
+        return (
+            self.get_first_node() == other.get_first_node()
+            and self.get_second_node() == other.get_second_node()
+        )
 
     def __hash__(self):
         return hash(self.nodes)

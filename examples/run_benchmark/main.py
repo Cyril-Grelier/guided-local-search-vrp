@@ -1,4 +1,3 @@
-
 import logging
 import os
 from pathlib import Path
@@ -9,14 +8,16 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-instance_path = os.path.join(Path(__file__).resolve().parent, 'instances')
-all_instances = sorted([f for f in os.listdir(instance_path) if f.endswith('.vrp')])[1:35]
+instance_path = os.path.join(Path(__file__).resolve().parent, "instances")
+all_instances = sorted([f for f in os.listdir(instance_path) if f.endswith(".vrp")])[
+    1:35
+]
 
 gaps = dict()
 run_times = dict()
 
 for file in all_instances:
-    logger.info(f'Solving {file}')
+    logger.info(f"Solving {file}")
     file_path = os.path.join(instance_path, file)
 
     # Let us use default parameters
@@ -29,10 +30,10 @@ for file in all_instances:
     gaps[file] = kgls.best_found_gap
     run_times[file] = kgls.total_runtime
 
-logger.info(f'Benchmark summary')
-logger.info(f'Average gap: {sum(gaps.values()) / len(gaps):.2f}')
-logger.info(f'Average run_time: {sum(run_times.values()) / len(run_times):.0f}')
-logger.info(f'Detailed Results')
+logger.info("Benchmark summary")
+logger.info(f"Average gap: {sum(gaps.values()) / len(gaps):.2f}")
+logger.info(f"Average run_time: {sum(run_times.values()) / len(run_times):.0f}")
+logger.info("Detailed Results")
 logger.info(f"{'Instance':<20}{'Time':<5}{'Gap':<5}")
 logger.info("-" * 30)
 for instance in gaps.keys():

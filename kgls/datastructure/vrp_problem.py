@@ -1,4 +1,3 @@
-
 from typing import List
 
 from .node import Node
@@ -10,7 +9,7 @@ class VRPProblem:
     capacity: int
     bks: float
 
-    def __init__(self, nodes: List[Node], capacity: int, bks: float = float('inf')):
+    def __init__(self, nodes: List[Node], capacity: int, bks: float = float("inf")):
         self.nodes: List[nodes] = nodes
         self.capacity: int = capacity
         self.bks: float = bks

@@ -3,8 +3,6 @@ from collections import defaultdict
 from .node import Node
 from .route import Route
 from .vrp_problem import VRPProblem
-#import matplotlib.pyplot as plt
-#from matplotlib.gridspec import GridSpec
 
 
 class VRPSolution:
@@ -16,19 +14,19 @@ class VRPSolution:
         self._plot_progress = False
 
         self._prev: dict[int, int] = {
-            node.node_id: None
-            for node in self.problem.customers
+            node.node_id: None for node in self.problem.customers
         }
         self._next: dict[int, int] = {
-            node.node_id: None
-            for node in self.problem.customers
+            node.node_id: None for node in self.problem.customers
         }
         self._route: dict[int, int] = {
-            node.node_id: None
-            for node in self.problem.customers
+            node.node_id: None for node in self.problem.customers
         }
 
     def start_plotting(self):
+        import matplotlib.pyplot as plt
+        from matplotlib.gridspec import GridSpec
+
         self._plot_progress = True
 
         self._fig = plt.figure(figsize=(10, 6))
@@ -67,8 +65,7 @@ class VRPSolution:
             route.validate()
 
         for route in self.routes:
-            assert route.volume <= self.problem.capacity, \
-                "Capacity violation"
+            assert route.volume <= self.problem.capacity, "Capacity violation"
             for node in route.customers:
                 assert self._route[node.node_id] == route
 
@@ -88,15 +85,15 @@ class VRPSolution:
         visited_customers = []
 
         for route in self.routes:
-            visited_customers.extend(
-                route.customers
-            )
+            visited_customers.extend(route.customers)
 
-        assert len(visited_customers) == len(set(visited_customers)), \
-            "Some customers have been planned more than once"
+        assert len(visited_customers) == len(
+            set(visited_customers)
+        ), "Some customers have been planned more than once"
 
-        assert len(visited_customers) == len(self.problem.customers), \
-            "Not all customers have been planned"
+        assert len(visited_customers) == len(
+            self.problem.customers
+        ), "Not all customers have been planned"
 
     def copy(self):
         solution_copy = self.__class__(self.problem)
@@ -106,16 +103,19 @@ class VRPSolution:
         return solution_copy
 
     def to_file(self, path_to_file: str):
-        with open(path_to_file, 'w') as file:
+        with open(path_to_file, "w") as file:
             for route in self.routes:
                 if route.size > 0:
-                    file.write(route.print() + '\n')
+                    file.write(route.print() + "\n")
 
     def remove_nodes(self, nodes_to_be_removed: list[Node]):
         route = self.route_of(nodes_to_be_removed[0])
 
         # nodes might be reversed
-        if len(nodes_to_be_removed) > 1 and self.next(nodes_to_be_removed[0]) != nodes_to_be_removed[1]:
+        if (
+            len(nodes_to_be_removed) > 1
+            and self.next(nodes_to_be_removed[0]) != nodes_to_be_removed[1]
+        ):
             prev_left_neighbor = self.prev(nodes_to_be_removed[-1])
             prev_right_neighbor = self.next(nodes_to_be_removed[0])
         else:
@@ -144,7 +144,9 @@ class VRPSolution:
                 self._next[node.node_id] = route_nodes[idx + 1]
                 self._route[node.node_id] = new_route
 
-    def insert_nodes_after(self, nodes_to_be_inserted: list[Node], move_after_node: Node, route: Route):
+    def insert_nodes_after(
+        self, nodes_to_be_inserted: list[Node], move_after_node: Node, route: Route
+    ):
         # re-link the nodes to be inserted, since they might have been rotated
         for index, node in enumerate(nodes_to_be_inserted):
             if index + 1 < len(nodes_to_be_inserted):
@@ -179,34 +181,41 @@ class VRPSolution:
 
     def _initialize_plots(self):
         import matplotlib.pyplot as plt
-        from matplotlib.gridspec import GridSpec
 
         # Initialize route lines
         colors = plt.cm.get_cmap("tab20c")
-        for route_index in range(len(self.problem.customers)):  # max number of possible routes
-            line, = self._ax_routes.plot([], [], color=colors(route_index % 20))
+        for route_index in range(
+            len(self.problem.customers)
+        ):  # max number of possible routes
+            (line,) = self._ax_routes.plot([], [], color=colors(route_index % 20))
             self._plotted_edges.append(line)
 
         # draw nodes
         for node in self.problem.nodes:
             if node.is_depot:
-                self._ax_routes.plot(node.x_coordinate, node.y_coordinate, color='black', marker='s')
+                self._ax_routes.plot(
+                    node.x_coordinate, node.y_coordinate, color="black", marker="s"
+                )
             else:
-                self._ax_routes.plot(node.x_coordinate, node.y_coordinate, color='grey', marker='o')
+                self._ax_routes.plot(
+                    node.x_coordinate, node.y_coordinate, color="grey", marker="o"
+                )
 
-        self._ax_routes.axis('off')
+        self._ax_routes.axis("off")
 
         # layout of chart
         self._ax_chart.set_box_aspect(1)  # Make the chart square-ish
-        self._ax_chart.spines['top'].set_visible(False)
-        self._ax_chart.spines['right'].set_visible(False)
-        self._ax_chart.spines['bottom'].set_color('grey')
-        self._ax_chart.spines['left'].set_color('grey')
+        self._ax_chart.spines["top"].set_visible(False)
+        self._ax_chart.spines["right"].set_visible(False)
+        self._ax_chart.spines["bottom"].set_color("grey")
+        self._ax_chart.spines["left"].set_color("grey")
         self._ax_chart.grid(False)
         self._ax_chart.set_xticks([])
         self._ax_chart.set_yticks([])
 
-        self._chart_line, = self._ax_chart.plot([], [], label="", color='black', linewidth=1)
+        (self._chart_line,) = self._ax_chart.plot(
+            [], [], label="", color="black", linewidth=1
+        )
 
         self._fig.canvas.draw()
         self._fig.canvas.flush_events()
@@ -215,13 +224,19 @@ class VRPSolution:
         if self._plot_progress:
             # update routes
             for route_index, route in enumerate(self.routes):
-                x_coordinates = [route.depot.x_coordinate] + [node.x_coordinate for node in route.nodes]
-                y_coordinates = [route.depot.y_coordinate] + [node.y_coordinate for node in route.nodes]
+                x_coordinates = [route.depot.x_coordinate] + [
+                    node.x_coordinate for node in route.nodes
+                ]
+                y_coordinates = [route.depot.y_coordinate] + [
+                    node.y_coordinate for node in route.nodes
+                ]
                 self._plotted_edges[route_index].set_data(x_coordinates, y_coordinates)
 
             # update value chart
-            if self.problem.bks != float('inf'):
-                current_gap = 100 * (solution_value - self.problem.bks) / self.problem.bks
+            if self.problem.bks != float("inf"):
+                current_gap = (
+                    100 * (solution_value - self.problem.bks) / self.problem.bks
+                )
             else:
                 current_gap = solution_value
 
@@ -230,7 +245,9 @@ class VRPSolution:
             self._chart_line.set_data(self._time_steps, self._solution_values)
             self._ax_chart.relim()  # Recompute the axis limits
             self._ax_chart.autoscale_view()
-            self._ax_chart.set_title(f'Gap to Optimum: {current_gap: .2f}%', fontsize=10, loc='center')
+            self._ax_chart.set_title(
+                f"Gap to Optimum: {current_gap: .2f}%", fontsize=10, loc="center"
+            )
 
             self._fig.canvas.draw_idle()
             self._fig.canvas.flush_events()

@@ -19,9 +19,7 @@ class Saving:
 
 
 def compute_savings(
-        customers: List[Node],
-        depot: Node,
-        cost_evaluator: CostEvaluator
+    customers: List[Node], depot: Node, cost_evaluator: CostEvaluator
 ) -> list[Saving]:
     savings_list = []
 
@@ -32,55 +30,58 @@ def compute_savings(
             - cost_evaluator.get_distance(node_1, node_2)
         )
 
-        savings_list.append(
-            Saving(node_1, node_2, saving)
-        )
+        savings_list.append(Saving(node_1, node_2, saving))
 
     return sorted(savings_list)
 
 
 def compute_weighted_savings(
-        customers: List[Node],
-        depot: Node,
-        cost_evaluator: CostEvaluator
+    customers: List[Node], depot: Node, cost_evaluator: CostEvaluator
 ) -> list[Saving]:
 
     savings_list = compute_savings(customers, depot, cost_evaluator)
 
     max_saving = sorted([_s.saving for _s in savings_list])[-1]
-    max_demand = sorted([_n.demand for _n in customers])[-1] + sorted([_n.demand for _n in customers])[-2]
+    max_demand = (
+        sorted([_n.demand for _n in customers])[-1]
+        + sorted([_n.demand for _n in customers])[-2]
+    )
 
     weighted_savings_list = []
     for node_1, node_2 in combinations(customers, 2):
         saving = (
-                cost_evaluator.get_distance(node_1, depot)
-                + cost_evaluator.get_distance(node_2, depot)
-                - cost_evaluator.get_distance(node_1, node_2)
+            cost_evaluator.get_distance(node_1, depot)
+            + cost_evaluator.get_distance(node_2, depot)
+            - cost_evaluator.get_distance(node_1, node_2)
         )
         saving = saving / max_saving + (node_1.demand + node_2.demand) / max_demand
 
-        weighted_savings_list.append(
-            Saving(node_1, node_2, saving)
-        )
+        weighted_savings_list.append(Saving(node_1, node_2, saving))
 
     return sorted(weighted_savings_list)
 
 
 def clark_wright_parallel(
-        vrp_instance: VRPProblem,
-        cost_evaluator: CostEvaluator,
-        demand_weighted: bool = False,
-        visualize_progess: bool = False
+    vrp_instance: VRPProblem,
+    cost_evaluator: CostEvaluator,
+    demand_weighted: bool = False,
+    visualize_progess: bool = False,
 ) -> VRPSolution:
 
     if demand_weighted:
-        savings_list = compute_weighted_savings(vrp_instance.customers, vrp_instance.depot, cost_evaluator)
+        savings_list = compute_weighted_savings(
+            vrp_instance.customers, vrp_instance.depot, cost_evaluator
+        )
     else:
-        savings_list = compute_savings(vrp_instance.customers, vrp_instance.depot, cost_evaluator)
+        savings_list = compute_savings(
+            vrp_instance.customers, vrp_instance.depot, cost_evaluator
+        )
 
     not_planned: list[Node] = vrp_instance.customers.copy()  # Nodes not yet planned
     can_be_extended: list[Node] = []  # Nodes planned at the start or end of a route
-    cannot_be_extended: list[Node] = []  # Nodes planned not at the start or end or a route
+    cannot_be_extended: list[Node] = (
+        []
+    )  # Nodes planned not at the start or end or a route
 
     # start with empty solution
     solution = VRPSolution(vrp_instance)
@@ -95,9 +96,7 @@ def clark_wright_parallel(
         elif node1 in not_planned and node2 in not_planned:
             if node1.demand + node2.demand <= vrp_instance.capacity:
                 # create a new route with node1 and node2
-                solution.add_route(
-                    [node1, node2]
-                )
+                solution.add_route([node1, node2])
 
                 not_planned.remove(node1)
                 not_planned.remove(node2)
@@ -136,7 +135,9 @@ def clark_wright_parallel(
             route1 = solution.route_of(node1)
             route2 = solution.route_of(node2)
 
-            if (route1 != route2) and (route1.volume + route2.volume <= vrp_instance.capacity):
+            if (route1 != route2) and (
+                route1.volume + route2.volume <= vrp_instance.capacity
+            ):
                 route2_customers = route2.customers
                 solution.remove_nodes(route2_customers)
 
@@ -152,7 +153,9 @@ def clark_wright_parallel(
                     if solution.prev(node2).is_depot:
                         route2_customers = route2_customers[::-1]
 
-                    solution.insert_nodes_after(route2_customers, solution.prev(node1), route1)
+                    solution.insert_nodes_after(
+                        route2_customers, solution.prev(node1), route1
+                    )
 
                 can_be_extended.remove(node2)
                 can_be_extended.remove(node1)
@@ -162,9 +165,7 @@ def clark_wright_parallel(
     # All nodes which were not inserted into a route (e.g., because of high capacity)
     # get their 'own' route
     for node in not_planned:
-        solution.add_route(
-            [node]
-        )
+        solution.add_route([node])
 
     solution.validate()
 
@@ -172,11 +173,11 @@ def clark_wright_parallel(
 
 
 def clark_wright_route_reduction(
-        vrp_instance: VRPProblem,
-        cost_evaluator: CostEvaluator,
-        visualize_progess: bool = False
+    vrp_instance: VRPProblem,
+    cost_evaluator: CostEvaluator,
+    visualize_progess: bool = False,
 ) -> VRPSolution:
-    logger.info('Constructing VRP solution with Clarke-Wright heuristic')
+    logger.info("Constructing VRP solution with Clarke-Wright heuristic")
     solution = clark_wright_parallel(vrp_instance, cost_evaluator)
 
     minimal_num_routes = math.ceil(
@@ -185,8 +186,9 @@ def clark_wright_route_reduction(
 
     if len(solution.routes) > minimal_num_routes + 1:
         logger.info(
-            f'Solution had {len(solution.routes)} routes, compared to {minimal_num_routes} minimal routes. '
-            f'Trying to reduce the number of routes by considering capacity in the savings.')
+            f"Solution had {len(solution.routes)} routes, compared to {minimal_num_routes} minimal routes. "
+            f"Trying to reduce the number of routes by considering capacity in the savings."
+        )
         solution = clark_wright_parallel(vrp_instance, cost_evaluator, True)
 
     return solution

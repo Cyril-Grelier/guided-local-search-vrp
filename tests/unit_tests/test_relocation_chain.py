@@ -1,4 +1,3 @@
-
 from kgls.local_search.operator_relocation_chain import search_relocation_chains
 from kgls.datastructure import Node, VRPProblem, CostEvaluator, VRPSolution
 
@@ -20,7 +19,7 @@ def build_problem() -> tuple[VRPProblem, CostEvaluator]:
     all_nodes = [depot] + customers
 
     vrp_problem = VRPProblem(all_nodes, 3)
-    vrp_evaluator = CostEvaluator(all_nodes, 3, {'neighborhood_size': 5})
+    vrp_evaluator = CostEvaluator(all_nodes, 3, {"neighborhood_size": 5})
 
     return vrp_problem, vrp_evaluator
 
@@ -50,7 +49,7 @@ def test_search_relocation_chains():
         solution=solution,
         cost_evaluator=evaluator,
         start_nodes=[problem.nodes[4]],
-        max_depth=2
+        max_depth=2,
     )
 
     # Assertions

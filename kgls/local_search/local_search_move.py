@@ -23,4 +23,3 @@ class LocalSearchMove(ABC):
 
     def __lt__(self, other):
         return self.improvement > other.improvement
-
