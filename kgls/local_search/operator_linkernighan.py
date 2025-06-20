@@ -5,8 +5,6 @@ import math
 from kgls.datastructure import Node, Route, VRPSolution, CostEvaluator
 from .local_search_move import LocalSearchMove
 
-logger = logging.getLogger(__name__)
-
 
 class LKEdge:
     node1: Node
@@ -51,7 +49,7 @@ class NOptMove(LocalSearchMove):
         pass
 
     def execute(self, solution: VRPSolution):
-        logger.debug(
+        logging.debug(
             f"Executing {len(self.removed_edges)}-opt move "
             f"with improvement {int(self.improvement)}"
         )
@@ -128,7 +126,6 @@ class LKMoveSearcher:
             # try to complete
             completion_costs = self.completion_costs_dict.get(start_node, float("inf"))
             if cum_improvement - completion_costs > 0:
-
                 if LKEdge(self.end_node, start_node) not in added_edges:
                     extended_move = added_edges.copy()
                     extended_move.add(LKEdge(self.end_node, start_node))

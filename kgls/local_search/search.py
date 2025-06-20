@@ -1,6 +1,6 @@
-import logging
 import math
 import time
+import logging
 from typing import Any
 
 from .operator_relocation_chain import search_relocation_chains
@@ -9,8 +9,6 @@ from .operator_3_opt import search_3_opt_moves
 from .operator_cross_exchange import search_cross_exchanges
 from kgls.datastructure import Node, Route, VRPSolution, CostEvaluator
 
-
-logger = logging.getLogger(__name__)
 
 # TODO best or first improving move
 # TODO execute operator until no better solution found?
@@ -58,7 +56,6 @@ def find_best_improving_moves(
     operator_name: str,
     run_parameters: dict[str, Any],
 ) -> tuple[int, set[Route]]:
-
     operators = {
         "relocation_chain": search_relocation_chains,
         "segment_move": search_3_opt_moves,
@@ -87,7 +84,7 @@ def find_best_improving_moves(
 
     if candidate_moves:
         # find all disjunct moves, sorted by steepest descent
-        logger.debug(
+        logging.debug(
             f"Found {len(candidate_moves)} improving moves, "
             f"current solution value: {cost_evaluator.get_solution_costs(solution)}"
         )
@@ -130,7 +127,6 @@ def local_search(
     intra_route_opt: bool,
     run_parameters: dict[str, Any],
 ) -> tuple[int, set[Route]]:
-
     num_executed_moves = 0
     all_changed_routes = set()
 
@@ -181,7 +177,7 @@ def perturbate_solution(
     cost_evaluator: CostEvaluator,
     run_parameters: dict[str, Any],
 ) -> set[Route]:
-    logger.debug("Starting perturbation of solution")
+    logging.debug("Starting perturbation of solution")
 
     # add previous penalties to costs of edges and compute the badness of the edges of the current solution
     cost_evaluator.enable_penalization()
@@ -192,7 +188,7 @@ def perturbate_solution(
 
     while applied_changes < run_parameters["num_perturbations"]:
         worst_edge = cost_evaluator.get_and_penalize_worst_edge()
-        logger.debug(
+        logging.debug(
             f"Penalizing edge({worst_edge.get_first_node()} - {worst_edge.get_second_node()})"
         )
         start_from_nodes = [node for node in worst_edge.nodes if not node.is_depot]

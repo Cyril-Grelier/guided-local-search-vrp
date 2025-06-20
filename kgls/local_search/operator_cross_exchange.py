@@ -3,11 +3,8 @@ import logging
 from kgls.datastructure import Node, Route, VRPSolution, CostEvaluator
 from .local_search_move import LocalSearchMove
 
-logger = logging.getLogger(__name__)
-
 
 class CrossExchange(LocalSearchMove):
-
     def __init__(
         self,
         segment1: list[Node],
@@ -41,7 +38,7 @@ class CrossExchange(LocalSearchMove):
         return True
 
     def execute(self, solution: VRPSolution):
-        logger.debug(
+        logging.debug(
             f"Executing cross-exchange with segments of sizes "
             f"{len(self.segment1)} and {len(self.segment2)} "
             f"with improvement of {int(self.improvement)}"
@@ -72,7 +69,6 @@ def search_cross_exchanges_from(
 
     for segment1_direction in segment1_directions:
         for segment2_direction in segment2_directions:
-
             route1_segment_connection_start = solution.neighbour(
                 start_node, 1 - segment1_direction
             )
@@ -130,7 +126,6 @@ def search_cross_exchanges_from(
                                     route1.volume - segment1_volume + segment2_volume
                                 )
                             ):
-
                                 # check feasibility of route 2
                                 if cost_evaluator.is_feasible(
                                     route2.volume - segment2_volume + segment1_volume

@@ -6,11 +6,8 @@ from .local_search_move import LocalSearchMove
 
 # TODO continue valid chains to find even better improvements
 
-logger = logging.getLogger(__name__)
-
 
 class Relocation:
-
     def __init__(
         self,
         node_to_move: Node,
@@ -43,7 +40,6 @@ class Relocation:
 
 
 class RelocationChain(LocalSearchMove):
-
     def __init__(self):
         self.relocations: list[Relocation] = []
         self.forbidden_nodes: set[Node] = set()
@@ -72,9 +68,9 @@ class RelocationChain(LocalSearchMove):
         self.forbidden_insertion.add(Edge(relocation.cur_prev, relocation.node_to_move))
         self.forbidden_insertion.add(Edge(relocation.node_to_move, relocation.cur_next))
 
-        self.demand_changes[
-            relocation.move_from_route
-        ] -= relocation.node_to_move.demand
+        self.demand_changes[relocation.move_from_route] -= (
+            relocation.node_to_move.demand
+        )
         self.demand_changes[relocation.move_to_route] += relocation.node_to_move.demand
 
         self.relocated_nodes.add(relocation.node_to_move)

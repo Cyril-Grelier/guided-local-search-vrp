@@ -3,11 +3,8 @@ import logging
 from kgls.datastructure import Node, Route, VRPSolution, CostEvaluator
 from .local_search_move import LocalSearchMove
 
-logger = logging.getLogger(__name__)
-
 
 class SegmentMove(LocalSearchMove):
-
     def __init__(
         self,
         segment: list[Node],
@@ -34,7 +31,7 @@ class SegmentMove(LocalSearchMove):
         return True
 
     def execute(self, solution: VRPSolution):
-        logger.debug(
+        logging.debug(
             f"Executing Segment relocation with segment of size {len(self.segment)} "
             f"with improvement of {int(self.improvement)}"
         )
@@ -55,7 +52,6 @@ def search_3_opt_moves_from(
 
     for segment_direction in segment_directions:
         for insert_direction in insert_directions:
-
             # segment_1_prev = start_node.get_neighbour(1 - segment_direction)
             segment_1_prev = solution.neighbour(start_node, 1 - segment_direction)
 

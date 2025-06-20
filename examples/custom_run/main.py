@@ -1,19 +1,15 @@
-import logging
 import os
 from pathlib import Path
 
 from kgls import KGLS
+from kgls.log import init_logging
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
+instance = "X-n101-k25"
 
 instance_path = os.path.join(Path(__file__).resolve().parent, "instances")
-file_path = os.path.join(instance_path, "X-n101-k25.vrp")
+file_path = os.path.join(instance_path, instance + ".vrp")
+
+init_logging("", instance, 0, True)
 
 # start with a quick search and 'light' parameters
 kgls_light = KGLS(

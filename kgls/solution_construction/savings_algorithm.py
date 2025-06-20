@@ -5,8 +5,6 @@ from typing import List
 
 from kgls.datastructure import Node, CostEvaluator, VRPProblem, VRPSolution
 
-logger = logging.getLogger(__name__)
-
 
 class Saving:
     def __init__(self, from_node, to_node, saving):
@@ -38,7 +36,6 @@ def compute_savings(
 def compute_weighted_savings(
     customers: List[Node], depot: Node, cost_evaluator: CostEvaluator
 ) -> list[Saving]:
-
     savings_list = compute_savings(customers, depot, cost_evaluator)
 
     max_saving = sorted([_s.saving for _s in savings_list])[-1]
@@ -67,7 +64,6 @@ def clark_wright_parallel(
     demand_weighted: bool = False,
     visualize_progess: bool = False,
 ) -> VRPSolution:
-
     if demand_weighted:
         savings_list = compute_weighted_savings(
             vrp_instance.customers, vrp_instance.depot, cost_evaluator
@@ -77,11 +73,12 @@ def clark_wright_parallel(
             vrp_instance.customers, vrp_instance.depot, cost_evaluator
         )
 
-    not_planned: list[Node] = vrp_instance.customers.copy()  # Nodes not yet planned
-    can_be_extended: list[Node] = []  # Nodes planned at the start or end of a route
-    cannot_be_extended: list[Node] = (
-        []
-    )  # Nodes planned not at the start or end or a route
+    # Nodes not yet planned
+    not_planned: list[Node] = vrp_instance.customers.copy()
+    # Nodes planned at the start or end of a route
+    can_be_extended: list[Node] = []
+    # Nodes planned not at the start or end or a route
+    cannot_be_extended: list[Node] = []
 
     # start with empty solution
     solution = VRPSolution(vrp_instance)
@@ -177,7 +174,7 @@ def clark_wright_route_reduction(
     cost_evaluator: CostEvaluator,
     visualize_progess: bool = False,
 ) -> VRPSolution:
-    logger.info("Constructing VRP solution with Clarke-Wright heuristic")
+    logging.info("#Constructing VRP solution with Clarke-Wright heuristic")
     solution = clark_wright_parallel(vrp_instance, cost_evaluator)
 
     minimal_num_routes = math.ceil(
@@ -185,8 +182,8 @@ def clark_wright_route_reduction(
     )
 
     if len(solution.routes) > minimal_num_routes + 1:
-        logger.info(
-            f"Solution had {len(solution.routes)} routes, compared to {minimal_num_routes} minimal routes. "
+        logging.info(
+            f"#Solution had {len(solution.routes)} routes, compared to {minimal_num_routes} minimal routes. "
             f"Trying to reduce the number of routes by considering capacity in the savings."
         )
         solution = clark_wright_parallel(vrp_instance, cost_evaluator, True)

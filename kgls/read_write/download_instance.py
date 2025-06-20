@@ -4,8 +4,6 @@ import requests
 
 from bs4 import BeautifulSoup
 
-logger = logging.getLogger(__name__)
-
 
 def download_instance(file_url: str) -> None:
     instance_name = file_url.split("/")[-1]
@@ -24,10 +22,10 @@ def download_instance(file_url: str) -> None:
         ) as file:
             file.write(response.text)
 
-        logger.info(f"Downloaded {file_url} into instance folder")
+        logging.info(f"#Downloaded {file_url} into instance folder")
 
     except requests.exceptions.RequestException as e:
-        logger.error("Error fetching the website content:", e)
+        logging.error("Error fetching the website content:", e)
 
 
 def download_all_instances() -> None:

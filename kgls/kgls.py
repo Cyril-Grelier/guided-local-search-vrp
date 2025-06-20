@@ -16,7 +16,6 @@ from .abortion_condition import (
     IterationsWithoutImprovementCondition,
 )
 
-logger = logging.getLogger(__name__)
 
 DEFAULT_PARAMETERS = {
     "depth_lin_kernighan": 4,
@@ -26,9 +25,18 @@ DEFAULT_PARAMETERS = {
     "moves": ["segment_move", "cross_exchange", "relocation_chain"],
 }
 
+# Same default as original paper
+DEFAULT_PARAMETERS = {
+    "depth_lin_kernighan": 4,
+    "depth_relocation_chain": 3,
+    "num_perturbations": 30,
+    "neighborhood_size": 30,
+    "moves": ["segment_move", "cross_exchange", "relocation_chain"],
+}
+
 
 class KGLS:
-    _abortion_condition: BaseAbortionCondition
+    _abortions_conditions: list[BaseAbortionCondition]
     _vrp_instance: VRPProblem
     _cost_evaluator: CostEvaluator
     _best_solution: Optional[VRPSolution]
@@ -37,7 +45,7 @@ class KGLS:
     _best_solution_costs: int
     _best_iteration: int
     _best_solution_time: int
-    _run_stats: list[dict[str, any]]
+    _run_stats: list[dict[str, Any]]
 
     def __init__(self, path_to_instance_file: str, **kwargs):
         self.run_parameters = self._get_run_parameters(**kwargs)
@@ -48,7 +56,7 @@ class KGLS:
         self._best_solution_costs = math.inf
         self._cur_solution = None
         self._best_solution = None
-        self._abortion_condition = IterationsWithoutImprovementCondition(100)
+        self._abortions_conditions = [IterationsWithoutImprovementCondition(100)]
 
     @staticmethod
     def _get_run_parameters(**kwargs) -> dict[str, Any]:
@@ -57,7 +65,7 @@ class KGLS:
             if key not in DEFAULT_PARAMETERS:
                 raise ValueError(
                     f"Invalid parameter: {key}. "
-                    f'Parameter must be in {", ".join(DEFAULT_PARAMETERS.keys())}'
+                    f"Parameter must be in {', '.join(DEFAULT_PARAMETERS.keys())}"
                 )
 
             if key != "moves" and not isinstance(value, int):
@@ -74,7 +82,7 @@ class KGLS:
                     )
                 if any(move not in DEFAULT_PARAMETERS["moves"] for move in value):
                     raise ValueError(
-                        f'Moves must be in {", ".join(DEFAULT_PARAMETERS["moves"])}'
+                        f"Moves must be in {', '.join(DEFAULT_PARAMETERS['moves'])}"
                     )
 
         # update default parameters
@@ -83,6 +91,11 @@ class KGLS:
 
     def best_solution_to_file(self, path_to_file: str):
         self._best_solution.to_file(path_to_file)
+
+    def set_abortions_conditions(
+        self, abortions_conditions: list[BaseAbortionCondition]
+    ):
+        self._abortions_conditions = abortions_conditions
 
     def set_abortion_condition(self, condition_name: str, param: int):
         # Set the abortion condition for KGLS.
@@ -97,7 +110,22 @@ class KGLS:
                 f"Unknown abortion condition: {condition_name}. "
                 f"Choose one of {' ,'.join(condition_classes.keys())}."
             )
-        self._abortion_condition = condition_classes[condition_name](param)
+        self._abortions_conditions = [condition_classes[condition_name](param)]
+
+    def add_abortion_condition(self, condition_name: str, param: int):
+        # Add an abortion condition for KGLS.
+        condition_classes = {
+            "max_iterations": MaxIterationsCondition,
+            "max_runtime": MaxRuntimeCondition,
+            "iterations_without_improvement": IterationsWithoutImprovementCondition,
+            "runtime_without_improvement": RuntimeWithoutImprovementCondition,
+        }
+        if condition_name not in condition_classes:
+            raise ValueError(
+                f"Unknown abortion condition: {condition_name}. "
+                f"Choose one of {' ,'.join(condition_classes.keys())}."
+            )
+        self._abortions_conditions.append(condition_classes[condition_name](param))
 
     def _update_run_stats(self, start_time):
         current_costs = self._cost_evaluator.get_solution_costs(self._cur_solution)
@@ -111,7 +139,14 @@ class KGLS:
 
         # update stats if new best solution was found
         if current_costs < self._best_solution_costs:
-            logger.info(f"{(time.time() - start_time): 1f} " f"{solution_quality: .2f}")
+            logging.info(
+                [
+                    self._iteration,
+                    f"{(time.time() - start_time):1f}",
+                    current_costs,
+                    f"{solution_quality:.2f}",
+                ]
+            )
             self._best_iteration = self._iteration
             self._best_solution_time = time.time()
             self._best_solution_costs = current_costs
@@ -130,7 +165,8 @@ class KGLS:
         )
 
     def run(self, visualize_progress: bool = False, start_solution: VRPSolution = None):
-        logger.info(f"Running KGLS. {self._abortion_condition.msg}")
+        abortion_msg = " ".join(a.msg for a in self._abortions_conditions)
+        logging.info(f"#Running KGLS. {abortion_msg}")
 
         start_time = time.time()
         self._run_stats = []
@@ -147,6 +183,8 @@ class KGLS:
         if visualize_progress:
             self._cur_solution.start_plotting()
 
+        logging.info(["iteration", "time", "best_score", "gap"])
+
         self._update_run_stats(start_time)
 
         improve_solution(
@@ -157,11 +195,14 @@ class KGLS:
         )
         self._update_run_stats(start_time)
 
-        while not self._abortion_condition.should_abort(
-            iteration=self._iteration,
-            best_iteration=self._best_iteration,
-            start_time=start_time,
-            best_sol_time=self._best_solution_time,
+        while not any(
+            a.should_abort(
+                iteration=self._iteration,
+                best_iteration=self._best_iteration,
+                start_time=start_time,
+                best_sol_time=self._best_solution_time,
+            )
+            for a in self._abortions_conditions
         ):
             self._iteration += 1
 
@@ -179,8 +220,8 @@ class KGLS:
 
             self._update_run_stats(start_time)
 
-        logger.info(
-            f"KGLS finished after {(time.time() - start_time): 1f} seconds and "
+        logging.info(
+            f"#KGLS finished after {(time.time() - start_time): 1f} seconds and "
             f"{self._iteration} iterations."
         )
 
@@ -238,9 +279,9 @@ class KGLS:
         return solution
 
     def start_from_solution(self, path_to_file: str, visualize_progress: bool = False):
-        logger.info("Continuing KGLS from specified solution")
+        logging.info("#Continuing KGLS from specified solution")
 
-        logger.info("Loading starting solution")
+        logging.info("#Loading starting solution")
         starting_solution = self._load_solution(path_to_file)
 
         self.run(
