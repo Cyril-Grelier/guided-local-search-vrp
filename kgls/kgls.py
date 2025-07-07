@@ -25,14 +25,14 @@ DEFAULT_PARAMETERS = {
     "moves": ["segment_move", "cross_exchange", "relocation_chain"],
 }
 
-# Same default as original paper
-DEFAULT_PARAMETERS = {
-    "depth_lin_kernighan": 4,
-    "depth_relocation_chain": 3,
-    "num_perturbations": 30,
-    "neighborhood_size": 30,
-    "moves": ["segment_move", "cross_exchange", "relocation_chain"],
-}
+# # Same default as original paper
+# DEFAULT_PARAMETERS = {
+#     "depth_lin_kernighan": 4,
+#     "depth_relocation_chain": 3,
+#     "num_perturbations": 30,
+#     "neighborhood_size": 30,
+#     "moves": ["segment_move", "cross_exchange", "relocation_chain"],
+# }
 
 
 class KGLS:

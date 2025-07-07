@@ -1,4 +1,5 @@
 from collections import defaultdict
+from typing import Optional
 
 from .node import Node
 from .route import Route
@@ -13,15 +14,21 @@ class VRPSolution:
         self.solution_stats: defaultdict[str, float] = defaultdict(float)
         self._plot_progress = False
 
-        self._prev: dict[int, int] = {
+        self._prev: dict[int, Optional[Node]] = {
             node.node_id: None for node in self.problem.customers
         }
-        self._next: dict[int, int] = {
+        self._next: dict[int, Optional[Node]] = {
             node.node_id: None for node in self.problem.customers
         }
-        self._route: dict[int, int] = {
+        self._route: dict[int, Optional[Route]] = {
             node.node_id: None for node in self.problem.customers
         }
+
+        # self._prev: list[Node] = [None for _ in range(len(self.problem.customers) + 2)]
+        # self._next: list[Node] = [None for _ in range(len(self.problem.customers) + 2)]
+        # self._route: list[Route] = [
+        #     None for _ in range(len(self.problem.customers) + 2)
+        # ]
 
     def start_plotting(self):
         import matplotlib.pyplot as plt
@@ -87,13 +94,13 @@ class VRPSolution:
         for route in self.routes:
             visited_customers.extend(route.customers)
 
-        assert len(visited_customers) == len(
-            set(visited_customers)
-        ), "Some customers have been planned more than once"
+        assert len(visited_customers) == len(set(visited_customers)), (
+            "Some customers have been planned more than once"
+        )
 
-        assert len(visited_customers) == len(
-            self.problem.customers
-        ), "Not all customers have been planned"
+        assert len(visited_customers) == len(self.problem.customers), (
+            "Not all customers have been planned"
+        )
 
     def copy(self):
         solution_copy = self.__class__(self.problem)

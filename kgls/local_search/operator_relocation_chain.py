@@ -1,5 +1,6 @@
 from collections import defaultdict
 import logging
+from typing import Optional
 
 from kgls.datastructure import Node, Route, Edge, VRPSolution, CostEvaluator
 from .local_search_move import LocalSearchMove
@@ -176,7 +177,7 @@ def search_relocation_chains_from(
     node_to_move: Node,
     max_depth: int,
     current_depth: int = 0,
-    cur_chain: RelocationChain = None,
+    cur_chain: Optional[RelocationChain] = None,
 ):
     if current_depth >= max_depth:
         # Stopping condition: Maximum depth reached

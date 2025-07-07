@@ -8,7 +8,7 @@ from .operator_linkernighan import run_lin_kernighan_heuristic
 from .operator_3_opt import search_3_opt_moves
 from .operator_cross_exchange import search_cross_exchanges
 from kgls.datastructure import Node, Route, VRPSolution, CostEvaluator
-
+from kgls.local_search.local_search_move import LocalSearchMove
 
 # TODO best or first improving move
 # TODO execute operator until no better solution found?
@@ -33,7 +33,7 @@ def improve_route(
     solution.solution_stats["time_lin_kernighan"] += end - start
 
 
-def get_disjunct_moves(moves: list) -> list:
+def get_disjunct_moves(moves: list[LocalSearchMove]) -> list:
     disjunct_moves = []
     for move in moves:
         is_disjunct = True
@@ -72,7 +72,7 @@ def find_best_improving_moves(
 
     start = time.time()
 
-    candidate_moves = operators[operator_name](
+    candidate_moves: list[LocalSearchMove] = operators[operator_name](
         solution=solution,
         cost_evaluator=cost_evaluator,
         start_nodes=start_nodes,
